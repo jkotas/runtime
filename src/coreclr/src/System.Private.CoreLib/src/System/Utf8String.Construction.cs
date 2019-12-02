@@ -54,10 +54,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Utf8String(ReadOnlySpan<byte> value);
 
-#if !CORECLR
-        static
-#endif
-        private Utf8String Ctor(ReadOnlySpan<byte> value)
+        private static Utf8String Ctor(ReadOnlySpan<byte> value)
         {
             if (value.IsEmpty)
             {
@@ -97,10 +94,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Utf8String(byte[] value, int startIndex, int length);
 
-#if !CORECLR
-        static
-#endif
-        private Utf8String Ctor(byte[] value, int startIndex, int length)
+        private static Utf8String Ctor(byte[] value, int startIndex, int length)
         {
             if (value is null)
             {
@@ -126,10 +120,7 @@ namespace System
         [CLSCompliant(false)]
         public extern unsafe Utf8String(byte* value);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe Utf8String Ctor(byte* value)
+        private static unsafe Utf8String Ctor(byte* value)
         {
             if (value is null)
             {
@@ -155,10 +146,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Utf8String(ReadOnlySpan<char> value);
 
-#if !CORECLR
-        static
-#endif
-        private Utf8String Ctor(ReadOnlySpan<char> value)
+        private static Utf8String Ctor(ReadOnlySpan<char> value)
         {
             Utf8String? newString = CreateFromUtf16Common(value, replaceInvalidSequences: false);
 
@@ -188,10 +176,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Utf8String(char[] value, int startIndex, int length);
 
-#if !CORECLR
-        static
-#endif
-        private Utf8String Ctor(char[] value, int startIndex, int length)
+        private static Utf8String Ctor(char[] value, int startIndex, int length)
         {
             if (value is null)
             {
@@ -216,10 +201,7 @@ namespace System
         [CLSCompliant(false)]
         public extern unsafe Utf8String(char* value);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe Utf8String Ctor(char* value)
+        private static unsafe Utf8String Ctor(char* value)
         {
             if (value == null)
             {
@@ -240,10 +222,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Utf8String(string value);
 
-#if !CORECLR
-        static
-#endif
-        private Utf8String Ctor(string value)
+        private static Utf8String Ctor(string value)
         {
             if (value is null)
             {

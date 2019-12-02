@@ -55,10 +55,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern String(char[] value);
 
-#if !CORECLR
-        static
-#endif
-        private string Ctor(char[]? value)
+        private static string Ctor(char[]? value)
         {
             if (value == null || value.Length == 0)
                 return Empty;
@@ -75,10 +72,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern String(char[] value, int startIndex, int length);
 
-#if !CORECLR
-        static
-#endif
-        private string Ctor(char[] value, int startIndex, int length)
+        private static string Ctor(char[] value, int startIndex, int length)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -108,10 +102,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(char* value);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(char* ptr)
+        private static unsafe string Ctor(char* ptr)
         {
             if (ptr == null)
                 return Empty;
@@ -130,10 +121,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(char* value, int startIndex, int length);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(char* ptr, int startIndex, int length)
+        private static unsafe string Ctor(char* ptr, int startIndex, int length)
         {
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length), SR.ArgumentOutOfRange_NegativeLength);
@@ -163,10 +151,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(sbyte* value);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(sbyte* value)
+        private static unsafe string Ctor(sbyte* value)
         {
             byte* pb = (byte*)value;
             if (pb == null)
@@ -181,10 +166,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(sbyte* value, int startIndex, int length);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(sbyte* value, int startIndex, int length)
+        private static unsafe string Ctor(sbyte* value, int startIndex, int length)
         {
             if (startIndex < 0)
                 throw new ArgumentOutOfRangeException(nameof(startIndex), SR.ArgumentOutOfRange_StartIndex);
@@ -240,10 +222,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(sbyte* value, int startIndex, int length, Encoding enc);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(sbyte* value, int startIndex, int length, Encoding? enc)
+        private static unsafe string Ctor(sbyte* value, int startIndex, int length, Encoding? enc)
         {
             if (enc == null)
                 return new string(value, startIndex, length);
@@ -274,10 +253,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern String(char c, int count);
 
-#if !CORECLR
-        static
-#endif
-        private string Ctor(char c, int count)
+        private static string Ctor(char c, int count)
         {
             if (count <= 0)
             {
@@ -323,10 +299,7 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern String(ReadOnlySpan<char> value);
 
-#if !CORECLR
-        static
-#endif
-        private unsafe string Ctor(ReadOnlySpan<char> value)
+        private static unsafe string Ctor(ReadOnlySpan<char> value)
         {
             if (value.Length == 0)
                 return Empty;
