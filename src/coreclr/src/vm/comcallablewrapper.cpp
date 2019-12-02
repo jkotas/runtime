@@ -23,7 +23,6 @@
 #include "class.h"
 #include "runtimecallablewrapper.h"
 #include "olevariant.h"
-#include "cachelinealloc.h"
 #include "threads.h"
 #include "ceemain.h"
 #include "excep.h"
@@ -74,18 +73,10 @@ extern "C" VOID ComCallPreStub();
 
 class NewCCWHolderBase : public HolderBase<ComCallWrapper *>
 {
-
 protected:
     NewCCWHolderBase(ComCallWrapper *pValue)
         : HolderBase<ComCallWrapper *>(pValue)
     {
-    }
-
-    // BaseHolder only initialize BASE with one parameter, so I had to
-    // use a separate function to set the cache which will be used in the release
-    void SetCache(ComCallWrapperCache *pCache)
-    {
-        m_pCache = pCache;
     }
 
     void DoAcquire()
@@ -95,12 +86,8 @@ protected:
 
     void DoRelease()
     {
-        this->m_value->FreeWrapper(m_pCache);
+        this->m_value->FreeWrapper();
     }
-
-
-private :
-    ComCallWrapperCache *m_pCache;
 };
 
 typedef ComCallWrapper *ComCallWrapperPtr;
@@ -113,9 +100,8 @@ typedef ComCallWrapper *ComCallWrapperPtr;
 class NewCCWHolder : public BaseHolder<ComCallWrapperPtr, NewCCWHolderBase>
 {
 public :
-    NewCCWHolder(ComCallWrapperCache *pCache)
+    NewCCWHolder()
     {
-        SetCache(pCache);
     }
 
     ComCallWrapperPtr& operator=(ComCallWrapperPtr p)
@@ -1165,7 +1151,7 @@ SimpleComCallWrapper* SimpleComCallWrapper::CreateSimpleWrapper()
 // Init, with the MethodTable, pointer to the vtable of the interface
 // and the main ComCallWrapper if the interface needs it
 //--------------------------------------------------------------------------
-void SimpleComCallWrapper::InitNew(OBJECTREF oref, ComCallWrapperCache *pWrapperCache, ComCallWrapper* pWrap,
+void SimpleComCallWrapper::InitNew(OBJECTREF oref, ComCallWrapper* pWrap,
                                 ComCallWrapper *pClassWrap, SyncBlock *pSyncBlock,
                                 ComCallWrapperTemplate* pTemplate)
 {
@@ -1176,7 +1162,6 @@ void SimpleComCallWrapper::InitNew(OBJECTREF oref, ComCallWrapperCache *pWrapper
         MODE_COOPERATIVE;
         PRECONDITION(oref != NULL);
         PRECONDITION(CheckPointer(pWrap));
-        PRECONDITION(CheckPointer(pWrapperCache, NULL_OK));
         PRECONDITION(CheckPointer(pSyncBlock, NULL_OK));
         PRECONDITION(CheckPointer(pTemplate));
         PRECONDITION(m_pSyncBlock == NULL);
@@ -1191,7 +1176,6 @@ void SimpleComCallWrapper::InitNew(OBJECTREF oref, ComCallWrapperCache *pWrapper
     m_pMT = pMT;
     m_pWrap = pWrap;
     m_pClassWrap = pClassWrap;
-    m_pWrapperCache = pWrapperCache;
     m_pTemplate = pTemplate;
     m_pTemplate->AddRef();
 
@@ -2198,7 +2182,6 @@ SyncBlock* ComCallWrapper::GetSyncBlock()
 //  create a wrapper and initialize it from the template
 //--------------------------------------------------------------------------
 ComCallWrapper* ComCallWrapper::CopyFromTemplate(ComCallWrapperTemplate* pTemplate,
-                                                 ComCallWrapperCache *pWrapperCache,
                                                  OBJECTHANDLE oh)
 {
     CONTRACT (ComCallWrapper*)
@@ -2208,7 +2191,6 @@ ComCallWrapper* ComCallWrapper::CopyFromTemplate(ComCallWrapperTemplate* pTempla
         MODE_ANY;
         INJECT_FAULT(COMPlusThrowOM());
         PRECONDITION(CheckPointer(pTemplate));
-        PRECONDITION(CheckPointer(pWrapperCache));
         PRECONDITION(oh != NULL);
         POSTCONDITION(CheckPointer(RETVAL));
     }
@@ -2219,23 +2201,9 @@ ComCallWrapper* ComCallWrapper::CopyFromTemplate(ComCallWrapperTemplate* pTempla
 
     // we have a template, create a wrapper and initialize from the template
     // alloc wrapper, aligned to cache line
-    NewCCWHolder pStartWrapper(pWrapperCache);
-    pStartWrapper = (ComCallWrapper*)pWrapperCache->GetCacheLineAllocator()->
-#ifdef HOST_64BIT
-                                    GetCacheLine64();
-    _ASSERTE(sizeof(ComCallWrapper) <= 64);
-#else
-                                    GetCacheLine32();
-    _ASSERTE(sizeof(ComCallWrapper) <= 32);
-#endif
-
-    if (pStartWrapper == NULL)
-        COMPlusThrowOM();
+    NewCCWHolder pStartWrapper(new ComCallWrapper());
 
     LOG((LF_INTEROP, LL_INFO100, "ComCallWrapper::CopyFromTemplate on Object %8.8x, Wrapper %8.8x\n", oh, static_cast<ComCallWrapperPtr>(pStartWrapper)));
-
-    // addref commgr
-    pWrapperCache->AddRef();
 
     // store the object handle
     pStartWrapper->m_ppThis = oh;
@@ -2261,30 +2229,19 @@ ComCallWrapper* ComCallWrapper::CopyFromTemplate(ComCallWrapperTemplate* pTempla
         if (blockIndex >= NumVtablePtrs)
         {
             // alloc wrapper, aligned 32 bytes
-            ComCallWrapper* pNewWrapper = (ComCallWrapper*)pWrapperCache->GetCacheLineAllocator()->
-#ifdef HOST_64BIT
-                                          GetCacheLine64();
-            _ASSERTE(sizeof(ComCallWrapper) <= 64);
-#else
-                                          GetCacheLine32();
-            _ASSERTE(sizeof(ComCallWrapper) <= 32);
-#endif
-
-            _ASSERTE(0 == (((DWORD_PTR)pNewWrapper) & ~enum_ThisMask));
+            ComCallWrapper* pNewWrapper = new ComCallWrapper();
+            _ASSERTE(0 == (((DWORD_PTR)pNewWrapper) & ~enum_ThisMask)); !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             // Link the wrapper
-            SetNext(pWrapper, pNewWrapper);
+            pWrapper->m_pNext = pNewWrapper;
 
             blockIndex = 0; // reset block index
-            if (pNewWrapper == NULL)
-            {
-                RETURN NULL;
-            }
 
             pWrapper = pNewWrapper;
 
             // initialize the object reference
             pWrapper->m_ppThis = oh;
+            pWrapper->m_pNext = NULL;
         }
 
         pWrapper->m_rgpIPtr[blockIndex++] = pTemplate->GetVTableSlot(i);
@@ -2391,9 +2348,6 @@ void ComCallWrapper::Cleanup()
 
     STRESS_LOG1 (LF_INTEROP, LL_INFO100, "Cleaning up CCW 0x%p\n", this);
 
-    // Retrieve the COM call wrapper cache before we clear anything
-    ComCallWrapperCache *pWrapperCache = m_pSimpleWrapper->GetWrapperCache();
-
     BOOL fOwnsHandle = FALSE;
     SyncBlock* pSyncBlock = m_pSimpleWrapper->GetSyncBlock();
 
@@ -2459,7 +2413,7 @@ void ComCallWrapper::Cleanup()
     }
 
     m_ppThis = NULL;
-    FreeWrapper(pWrapperCache);
+    FreeWrapper();
 }
 
 //--------------------------------------------------------------------------
@@ -2521,7 +2475,7 @@ SLOT** ComCallWrapper::GetFirstInterfaceSlot()
 // void ComCallWrapper::FreeWrapper(ComCallWrapper* pWrap)
 // walk the list and free all wrappers
 //--------------------------------------------------------------------------
-void ComCallWrapper::FreeWrapper(ComCallWrapperCache *pWrapperCache)
+void ComCallWrapper::FreeWrapper()
 {
     CONTRACTL
     {
@@ -2529,34 +2483,21 @@ void ComCallWrapper::FreeWrapper(ComCallWrapperCache *pWrapperCache)
         GC_TRIGGERS;
         MODE_ANY;
         INSTANCE_CHECK;
-        PRECONDITION(CheckPointer(pWrapperCache));
     }
     CONTRACTL_END;
 
+    ComCallWrapper* pWrap2 = IsLinked() ? GetNext(this) : NULL;
+
+    while (pWrap2 != NULL)
     {
-        ComCallWrapperCache::LockHolder lh(pWrapperCache);
+        ComCallWrapper* pTempWrap = GetNext(pWrap2);
 
-        ComCallWrapper* pWrap2 = IsLinked() ? GetNext(this) : NULL;
+        delete pWrap2;
 
-        while (pWrap2 != NULL)
-        {
-            ComCallWrapper* pTempWrap = GetNext(pWrap2);
-    #ifdef HOST_64BIT
-            pWrapperCache->GetCacheLineAllocator()->FreeCacheLine64(pWrap2);
-    #else //HOST_64BIT
-            pWrapperCache->GetCacheLineAllocator()->FreeCacheLine32(pWrap2);
-    #endif //HOST_64BIT
-            pWrap2 = pTempWrap;
-        }
-    #ifdef HOST_64BIT
-        pWrapperCache->GetCacheLineAllocator()->FreeCacheLine64(this);
-    #else //HOST_64BIT
-        pWrapperCache->GetCacheLineAllocator()->FreeCacheLine32(this);
-    #endif //HOST_64BIT
+        pWrap2 = pTempWrap;
     }
 
-    // release ccw mgr
-    pWrapperCache->Release();
+    delete this;
 }
 
 //--------------------------------------------------------------------------
@@ -2594,13 +2535,7 @@ ComCallWrapper* ComCallWrapper::CreateWrapper(OBJECTREF* ppObj, ComCallWrapperTe
 
     pSyncBlock->SetPrecious();
 
-    // if the object belongs to a domain neutral class, need to allocate the wrapper in the default domain.
-    // The object is potentially agile so if allocate out of the current domain and then hand out to
-    // multiple domains we might never release the wrapper for that object and hence never unload the CCWC.
-    ComCallWrapperCache *pWrapperCache = NULL;
     TypeHandle thClass = pServer->GetTypeHandle();
-
-    pWrapperCache = thClass.GetMethodTable()->GetLoaderAllocator()->GetComCallWrapperCache();
 
     {
         // check if somebody beat us to it
@@ -2615,13 +2550,12 @@ ComCallWrapper* ComCallWrapper::CreateWrapper(OBJECTREF* ppObj, ComCallWrapperTe
             }
 
             // Make sure the CCW will be destroyed when exception happens
-            // Also keep pWrapperCache alive within this scope
             // It needs to be destroyed after ComCallWrapperCache::LockHolder otherwise there would be a lock violation
-            NewCCWHolder pNewCCW(pWrapperCache);
+            NewCCWHolder pNewCCW;
 
             // Now we'll take the lock in a place where we won't be calling managed code and check again.
             {
-                ComCallWrapperCache::LockHolder lh(pWrapperCache);
+                CrstHolder lh(thClass.GetMethodTable()->GetLoaderAllocator()->GetComCallWrapperCrst());
 
                 pStartWrapper = GetWrapperForObject(pServer, pTemplate);
                 if (pStartWrapper == NULL)
@@ -2646,11 +2580,11 @@ ComCallWrapper* ComCallWrapper::CreateWrapper(OBJECTREF* ppObj, ComCallWrapperTe
                     }
 
                     // copy from template
-                    pNewCCW = CopyFromTemplate(pTemplate, pWrapperCache, oh);
+                    pNewCCW = CopyFromTemplate(pTemplate, oh);
 
                     NewHolder<SimpleComCallWrapper> pSimpleWrap = SimpleComCallWrapper::CreateSimpleWrapper();
 
-                    pSimpleWrap->InitNew(pServer, pWrapperCache, pNewCCW, pClassCCW, pSyncBlock, pTemplate);
+                    pSimpleWrap->InitNew(pServer, pNewCCW, pClassCCW, pSyncBlock, pTemplate);
 
                     InitSimpleWrapper(pNewCCW, pSimpleWrap);
 
@@ -3721,136 +3655,6 @@ IDispatch* ComCallWrapper::GetIDispatchIP()
         }
     }
 }
-
-//--------------------------------------------------------------------------
-// ComCallable wrapper manager
-// constructor
-//--------------------------------------------------------------------------
-ComCallWrapperCache::ComCallWrapperCache() :
-    m_lock(CrstCOMWrapperCache),
-    m_cbRef(0),
-    m_pCacheLineAllocator(NULL),
-    m_pLoaderAllocator(NULL)
-{
-    WRAPPER_NO_CONTRACT;
-
-}
-
-//-------------------------------------------------------------------
-// ComCallable wrapper manager
-// destructor
-//-------------------------------------------------------------------
-ComCallWrapperCache::~ComCallWrapperCache()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-        MODE_ANY;
-    }
-    CONTRACTL_END;
-
-    LOG((LF_INTEROP, LL_INFO100, "ComCallWrapperCache::~ComCallWrapperCache %8.8x in loader allocator [%d] %8.8x\n",
-            this, GetLoaderAllocator() ? GetLoaderAllocator()->GetCreationNumber() : 0, GetLoaderAllocator()));
-
-    if (m_pCacheLineAllocator)
-    {
-        delete m_pCacheLineAllocator;
-        m_pCacheLineAllocator = NULL;
-    }
-
-    LoaderAllocator *pLoaderAllocator = GetLoaderAllocator();   // don't use member directly, need to mask off flags
-    if (pLoaderAllocator)
-    {
-        // clear hook in LoaderAllocator as we're going away
-        pLoaderAllocator->ResetComCallWrapperCache();
-    }
-}
-
-
-//-------------------------------------------------------------------
-// ComCallable wrapper manager
-// Create/Init method
-//-------------------------------------------------------------------
-ComCallWrapperCache *ComCallWrapperCache::Create(LoaderAllocator *pLoaderAllocator)
-{
-    CONTRACT (ComCallWrapperCache*)
-    {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_ANY;
-        INJECT_FAULT(COMPlusThrowOM());
-        PRECONDITION(CheckPointer(pLoaderAllocator));
-        POSTCONDITION(CheckPointer(RETVAL));
-    }
-    CONTRACT_END;
-
-    NewHolder<ComCallWrapperCache> pWrapperCache = new ComCallWrapperCache();
-
-    LOG((LF_INTEROP, LL_INFO100, "ComCallWrapperCache::Create %8.8x in loader allocator [%d] %8.8x\n",
-        (ComCallWrapperCache *)pWrapperCache, pLoaderAllocator ? pLoaderAllocator->GetCreationNumber() : 0, pLoaderAllocator));
-
-    NewHolder<CCacheLineAllocator> line = new CCacheLineAllocator;
-
-    pWrapperCache->m_pLoaderAllocator = pLoaderAllocator;
-    pWrapperCache->m_pCacheLineAllocator = line;
-
-    pWrapperCache->AddRef();
-
-    line.SuppressRelease();
-    pWrapperCache.SuppressRelease();
-    RETURN pWrapperCache;
-}
-
-//-------------------------------------------------------------------
-// ComCallable wrapper manager
-// LONG AddRef()
-//-------------------------------------------------------------------
-LONG ComCallWrapperCache::AddRef()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_TRIGGERS;
-        MODE_ANY;
-    }
-    CONTRACTL_END;
-
-    LONG i = FastInterlockIncrement(&m_cbRef);
-    LOG((LF_INTEROP, LL_INFO100, "ComCallWrapperCache::Addref %8.8x with %d in loader allocator [%d] %8.8x\n",
-        this, i, GetLoaderAllocator()?GetLoaderAllocator()->GetCreationNumber() : 0, GetLoaderAllocator()));
-
-    return i;
-}
-
-//-------------------------------------------------------------------
-// ComCallable wrapper manager
-// LONG Release()
-//-------------------------------------------------------------------
-LONG ComCallWrapperCache::Release()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_TRIGGERS;
-        MODE_ANY;
-    }
-    CONTRACTL_END;
-
-    LONG i = FastInterlockDecrement(&m_cbRef);
-    _ASSERTE(i >= 0);
-
-    LOG((LF_INTEROP, LL_INFO100, "ComCallWrapperCache::Release %8.8x with %d in loader allocator [%d] %8.8x\n",
-        this, i, GetLoaderAllocator() ? GetLoaderAllocator()->GetCreationNumber() : 0, GetLoaderAllocator()));
-    if ( i == 0)
-        delete this;
-
-    return i;
-}
-
-
-
-
 
 
 //--------------------------------------------------------------------------

@@ -77,10 +77,6 @@ LoaderAllocator::LoaderAllocator()
 
     m_pMarshalingData = NULL;
 
-#ifdef FEATURE_COMINTEROP
-    m_pComCallWrapperCache = NULL;
-#endif
-
     m_pUMEntryThunkCache = NULL;
 
     m_nLoaderAllocator = InterlockedIncrement64((LONGLONG *)&LoaderAllocator::cLoaderAllocatorsCreated);
@@ -665,27 +661,6 @@ BOOL QCALLTYPE LoaderAllocator::Destroy(QCall::LoaderAllocatorHandle pLoaderAllo
 
         // This will probably change for shared code unloading
         _ASSERTE(pID->GetType() == LAT_Assembly);
-
-#ifdef FEATURE_COMINTEROP
-        if (pLoaderAllocator->m_pComCallWrapperCache)
-        {
-            pLoaderAllocator->m_pComCallWrapperCache->Release();
-
-            // if the above released the wrapper cache, then it will call back and reset our
-            // m_pComCallWrapperCache to null.
-            if (!pLoaderAllocator->m_pComCallWrapperCache)
-            {
-                LOG((LF_CLASSLOADER, LL_INFO10, "LoaderAllocator::Destroy ComCallWrapperCache released\n"));
-            }
-    #ifdef _DEBUG
-            else
-            {
-                pLoaderAllocator->m_pComCallWrapperCache = NULL;
-                LOG((LF_CLASSLOADER, LL_INFO10, "LoaderAllocator::Destroy ComCallWrapperCache not released\n"));
-            }
-    #endif // _DEBUG
-        }
-#endif // FEATURE_COMINTEROP
 
         DomainAssembly* pDomainAssembly = (DomainAssembly*)(pID->GetDomainAssemblyIterator());
         if (pDomainAssembly != NULL)
@@ -1934,30 +1909,6 @@ void AssemblyLoaderAllocator::ReleaseManagedAssemblyLoadContext()
         m_binderToRelease->ReleaseLoadContext();
     }
 }
-
-#ifdef FEATURE_COMINTEROP
-ComCallWrapperCache * LoaderAllocator::GetComCallWrapperCache()
-{
-    CONTRACTL
-    {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_ANY;
-        INJECT_FAULT(COMPlusThrowOM(););
-    }
-    CONTRACTL_END;
-
-    if (!m_pComCallWrapperCache)
-    {
-        CrstHolder lh(&m_ComCallWrapperCrst);
-
-        if (!m_pComCallWrapperCache)
-            m_pComCallWrapperCache = ComCallWrapperCache::Create(this);
-    }
-    _ASSERTE(m_pComCallWrapperCache);
-    return m_pComCallWrapperCache;
-}
-#endif // FEATURE_COMINTEROP
 
 // U->M thunks created in this LoaderAllocator and not associated with a delegate.
 UMEntryThunkCache *LoaderAllocator::GetUMEntryThunkCache()

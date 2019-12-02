@@ -135,10 +135,6 @@ template <typename ELEMENT>
 class ListLockEntryBase;
 typedef ListLockEntryBase<void*> ListLockEntry;
 class UMEntryThunkCache;
-
-#ifdef FEATURE_COMINTEROP
-class ComCallWrapperCache;
-#endif // FEATURE_COMINTEROP
 class EEMarshalingData;
 
 class LoaderAllocator
@@ -261,11 +257,7 @@ private:
 
     SegmentedHandleIndexStack m_freeHandleIndexesStack;
 #ifdef FEATURE_COMINTEROP
-    // The wrapper cache for this loader allocator - it has its own CCacheLineAllocator on a per loader allocator basis
-    // to allow the loader allocator to go away and eventually kill the memory when all refs are gone
-
-    VolatilePtr<ComCallWrapperCache> m_pComCallWrapperCache;
-    // Used for synchronizing creation of the m_pComCallWrapperCache
+    // Used for synchronizing creation of ComCallWrappers
     CrstExplicitInit m_ComCallWrapperCrst;
     // Hash table that maps a MethodTable to COM Interop compatibility data.
     PtrHashMap m_interopDataHash;
@@ -579,12 +571,10 @@ public:
 
 #ifdef FEATURE_COMINTEROP
 
-    ComCallWrapperCache * GetComCallWrapperCache();
-
-    void ResetComCallWrapperCache()
+    CrstExplicitInit * GetComCallWrapperCrst()
     {
         LIMITED_METHOD_CONTRACT;
-        m_pComCallWrapperCache = NULL;
+        return &m_ComCallWrapperCrst;
     }
 
 #ifndef DACCESS_COMPILE

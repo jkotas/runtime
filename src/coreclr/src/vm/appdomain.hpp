@@ -64,7 +64,6 @@ class TypeEquivalenceHashTable;
 class StringArrayList;
 
 #ifdef FEATURE_COMINTEROP
-class ComCallWrapperCache;
 struct SimpleComCallWrapper;
 class RCWRefCache;
 #endif // FEATURE_COMINTEROP

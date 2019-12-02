@@ -39,68 +39,6 @@ typedef DPTR(struct SimpleComCallWrapper) PTR_SimpleComCallWrapper;
 // Terminator to indicate that indicates the end of a chain of linked wrappers.
 #define LinkedWrapperTerminator (PTR_ComCallWrapper)-1
 
-class ComCallWrapperCache
-{
-public:
-    // Encapsulate a SpinLockHolder, so that clients of our lock don't have to know
-    // the details of our implementation.
-    class LockHolder : public CrstHolder
-    {
-    public:
-        LockHolder(ComCallWrapperCache *pCache)
-            : CrstHolder(&pCache->m_lock)
-        {
-            WRAPPER_NO_CONTRACT;
-        }
-    };
-
-    ComCallWrapperCache();
-    ~ComCallWrapperCache();
-
-    // create a new WrapperCache (one per each LoaderAllocator)
-    static ComCallWrapperCache* Create(LoaderAllocator *pLoaderAllocator);
-
-    // refcount
-    LONG    AddRef();
-    LONG    Release();
-
-    CCacheLineAllocator* GetCacheLineAllocator()
-    {
-        CONTRACT (CCacheLineAllocator*)
-        {
-            WRAPPER(THROWS);
-            WRAPPER(GC_TRIGGERS);
-            MODE_ANY;
-            POSTCONDITION(CheckPointer(RETVAL));
-        }
-        CONTRACT_END;
-
-        RETURN m_pCacheLineAllocator;
-    }
-
-    LoaderAllocator* GetLoaderAllocator()
-    {
-        CONTRACT (LoaderAllocator*)
-        {
-            WRAPPER(THROWS);
-            WRAPPER(GC_TRIGGERS);
-            MODE_ANY;
-            POSTCONDITION(CheckPointer(RETVAL, NULL_OK));
-        }
-        CONTRACT_END;
-
-        RETURN m_pLoaderAllocator;
-    }
-
-private:
-    LONG                    m_cbRef;
-    CCacheLineAllocator*    m_pCacheLineAllocator;
-    LoaderAllocator*        m_pLoaderAllocator;
-
-    // spin lock for fast synchronization
-    Crst                    m_lock;
-};
-
 
 //---------------------------------------------------------------------------------
 // COM called wrappers on CLR objects
@@ -1003,28 +941,7 @@ public:
 
     OBJECTHANDLE GetObjectHandle() { LIMITED_METHOD_CONTRACT; return m_ppThis; }
 
-    // don't instantiate this class directly
-    ComCallWrapper() = delete;
-    ~ComCallWrapper() = delete;
-
 protected:
-#ifndef DACCESS_COMPILE
-    static void SetNext(ComCallWrapper* pWrap, ComCallWrapper* pNextWrapper)
-    {
-        CONTRACTL
-        {
-            WRAPPER(THROWS);
-            WRAPPER(GC_TRIGGERS);
-            MODE_ANY;
-            PRECONDITION(CheckPointer(pWrap));
-            PRECONDITION(CheckPointer(pNextWrapper, NULL_OK));
-        }
-        CONTRACTL_END;
-
-        pWrap->m_pNext = pNextWrapper;
-    }
-#endif // !DACCESS_COMPILE
-
     static PTR_ComCallWrapper GetNext(PTR_ComCallWrapper pWrap)
     {
         CONTRACT (PTR_ComCallWrapper)
@@ -1049,7 +966,6 @@ protected:
 
     // helper to create a wrapper from a template
     static ComCallWrapper* CopyFromTemplate(ComCallWrapperTemplate* pTemplate,
-                                            ComCallWrapperCache *pWrapperCache,
                                             OBJECTHANDLE oh);
 
     static SLOT** GetComIPLocInWrapper(ComCallWrapper* pWrap, unsigned int iIndex);
@@ -1058,7 +974,7 @@ public:
     SLOT** GetFirstInterfaceSlot();
 
     // walk the list and free all blocks
-    void FreeWrapper(ComCallWrapperCache *pWrapperCache);
+    void FreeWrapper();
 
     BOOL IsWrapperActive();
 
@@ -1464,7 +1380,7 @@ public:
 
     // Init pointer to the vtable of the interface
     // and the main ComCallWrapper if the interface needs it
-    void InitNew(OBJECTREF oref, ComCallWrapperCache *pWrapperCache, ComCallWrapper* pWrap,
+    void InitNew(OBJECTREF oref, ComCallWrapper* pWrap,
                  ComCallWrapper *pClassWrap, SyncBlock* pSyncBlock,
                  ComCallWrapperTemplate* pTemplate);
 
@@ -1507,20 +1423,6 @@ public:
         CONTRACT_END;
 
         RETURN (GetMainWrapper()->GetObjectRef());
-    }
-
-    ComCallWrapperCache* GetWrapperCache()
-    {
-        CONTRACT (ComCallWrapperCache*)
-        {
-            WRAPPER(THROWS);
-            WRAPPER(GC_TRIGGERS);
-            MODE_ANY;
-            POSTCONDITION(CheckPointer(RETVAL));
-        }
-        CONTRACT_END;
-
-        RETURN m_pWrapperCache;
     }
 
     // Connection point helper methods.
@@ -2013,7 +1915,6 @@ private:
     PTR_ComCallWrapper              m_pWrap;      // the first ComCallWrapper associated with this SimpleComCallWrapper
     PTR_ComCallWrapper              m_pClassWrap; // the first ComCallWrapper associated with the class (only if m_pMT is an interface)
     MethodTable*                    m_pMT;
-    ComCallWrapperCache*            m_pWrapperCache;
     PTR_ComCallWrapperTemplate      m_pTemplate;
 
     // Points to uncommonly used data that are dynamically allocated

@@ -299,7 +299,6 @@ set(VM_SOURCES_WKS
     assemblyname.cpp
     assemblynative.cpp
     assemblyspec.cpp
-    cachelinealloc.cpp
     callhelpers.cpp
     callsiteinspect.cpp
     ceemain.cpp
@@ -416,7 +415,6 @@ set(VM_HEADERS_WKS
     assemblynative.hpp
     assemblyspec.hpp
     assemblyspecbase.h
-    cachelinealloc.h
     callhelpers.h
     callsiteinspect.h
     ceemain.h
