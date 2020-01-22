@@ -57,50 +57,6 @@ namespace System
             }
             return -1;
         }
-
-        public static int IndexOfAny(ref byte searchSpace, int searchSpaceLength, ref byte value, int valueLength)
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return -1;  // A zero-length set of values is always treated as "not found".
-
-            int offset = -1;
-            for (int i = 0; i < valueLength; i++)
-            {
-                int tempIndex = IndexOf(ref searchSpace, Unsafe.Add(ref value, i), searchSpaceLength);
-                if ((uint)tempIndex < (uint)offset)
-                {
-                    offset = tempIndex;
-                    // Reduce space for search, cause we don't care if we find the search value after the index of a previously found value
-                    searchSpaceLength = tempIndex;
-
-                    if (offset == 0)
-                        break;
-                }
-            }
-            return offset;
-        }
-
-        public static int LastIndexOfAny(ref byte searchSpace, int searchSpaceLength, ref byte value, int valueLength)
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return -1;  // A zero-length set of values is always treated as "not found".
-
-            int offset = -1;
-            for (int i = 0; i < valueLength; i++)
-            {
-                int tempIndex = LastIndexOf(ref searchSpace, Unsafe.Add(ref value, i), searchSpaceLength);
-                if (tempIndex > offset)
-                    offset = tempIndex;
-            }
-            return offset;
-        }
-
         // Adapted from IndexOf(...)
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static unsafe bool Contains(ref byte searchSpace, byte value, int length)
@@ -422,40 +378,6 @@ namespace System
             return (int)(byte*)(offset + 6);
         Found7:
             return (int)(byte*)(offset + 7);
-        }
-
-        public static int LastIndexOf(ref byte searchSpace, int searchSpaceLength, ref byte value, int valueLength)
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return 0;  // A zero-length sequence is always treated as "found" at the start of the search space.
-
-            byte valueHead = value;
-            ref byte valueTail = ref Unsafe.Add(ref value, 1);
-            int valueTailLength = valueLength - 1;
-
-            int offset = 0;
-            while (true)
-            {
-                Debug.Assert(0 <= offset && offset <= searchSpaceLength); // Ensures no deceptive underflows in the computation of "remainingSearchSpaceLength".
-                int remainingSearchSpaceLength = searchSpaceLength - offset - valueTailLength;
-                if (remainingSearchSpaceLength <= 0)
-                    break;  // The unsearched portion is now shorter than the sequence we're looking for. So it can't be there.
-
-                // Do a quick search for the first element of "value".
-                int relativeIndex = LastIndexOf(ref searchSpace, valueHead, remainingSearchSpaceLength);
-                if (relativeIndex == -1)
-                    break;
-
-                // Found the first element of "value". See if the tail matches.
-                if (SequenceEqual(ref Unsafe.Add(ref searchSpace, relativeIndex + 1), ref valueTail, (nuint)valueTailLength))  // The (nunit)-cast is necessary to pick the correct overload
-                    return relativeIndex;  // The tail matched. Return a successful find.
-
-                offset += remainingSearchSpaceLength - relativeIndex;
-            }
-            return -1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]

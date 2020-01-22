@@ -11,44 +11,12 @@ namespace System
 {
     internal static partial class SpanHelpers // .T
     {
-        public static int IndexOf<T>(ref T searchSpace, int searchSpaceLength, ref T value, int valueLength) where T : IEquatable<T>
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return 0;  // A zero-length sequence is always treated as "found" at the start of the search space.
-
-            T valueHead = value;
-            ref T valueTail = ref Unsafe.Add(ref value, 1);
-            int valueTailLength = valueLength - 1;
-
-            int index = 0;
-            while (true)
-            {
-                Debug.Assert(0 <= index && index <= searchSpaceLength); // Ensures no deceptive underflows in the computation of "remainingSearchSpaceLength".
-                int remainingSearchSpaceLength = searchSpaceLength - index - valueTailLength;
-                if (remainingSearchSpaceLength <= 0)
-                    break;  // The unsearched portion is now shorter than the sequence we're looking for. So it can't be there.
-
-                // Do a quick search for the first element of "value".
-                int relativeIndex = IndexOf(ref Unsafe.Add(ref searchSpace, index), valueHead, remainingSearchSpaceLength);
-                if (relativeIndex == -1)
-                    break;
-                index += relativeIndex;
-
-                // Found the first element of "value". See if the tail matches.
-                if (SequenceEqual(ref Unsafe.Add(ref searchSpace, index + 1), ref valueTail, valueTailLength))
-                    return index;  // The tail matched. Return a successful find.
-
-                index++;
-            }
-            return -1;
-        }
-
         // Adapted from IndexOf(...)
         public static unsafe bool Contains<T>(ref T searchSpace, T value, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             IntPtr index = (IntPtr)0; // Use IntPtr for arithmetic to avoid unnecessary 64->32->64 truncations
@@ -119,6 +87,9 @@ namespace System
 
         public static unsafe int IndexOf<T>(ref T searchSpace, T value, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             IntPtr index = (IntPtr)0; // Use IntPtr for arithmetic to avoid unnecessary 64->32->64 truncations
@@ -206,6 +177,9 @@ namespace System
 
         public static int IndexOfAny<T>(ref T searchSpace, T value0, T value1, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             T lookUp;
@@ -310,6 +284,9 @@ namespace System
 
         public static int IndexOfAny<T>(ref T searchSpace, T value0, T value1, T value2, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             T lookUp;
@@ -411,67 +388,11 @@ namespace System
             return index + 7;
         }
 
-        public static int IndexOfAny<T>(ref T searchSpace, int searchSpaceLength, ref T value, int valueLength) where T : IEquatable<T>
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return -1;  // A zero-length set of values is always treated as "not found".
-
-            int index = -1;
-            for (int i = 0; i < valueLength; i++)
-            {
-                int tempIndex = IndexOf(ref searchSpace, Unsafe.Add(ref value, i), searchSpaceLength);
-                if ((uint)tempIndex < (uint)index)
-                {
-                    index = tempIndex;
-                    // Reduce space for search, cause we don't care if we find the search value after the index of a previously found value
-                    searchSpaceLength = tempIndex;
-
-                    if (index == 0)
-                        break;
-                }
-            }
-            return index;
-        }
-
-        public static int LastIndexOf<T>(ref T searchSpace, int searchSpaceLength, ref T value, int valueLength) where T : IEquatable<T>
-        {
-            Debug.Assert(searchSpaceLength >= 0);
-            Debug.Assert(valueLength >= 0);
-
-            if (valueLength == 0)
-                return 0;  // A zero-length sequence is always treated as "found" at the start of the search space.
-
-            T valueHead = value;
-            ref T valueTail = ref Unsafe.Add(ref value, 1);
-            int valueTailLength = valueLength - 1;
-
-            int index = 0;
-            while (true)
-            {
-                Debug.Assert(0 <= index && index <= searchSpaceLength); // Ensures no deceptive underflows in the computation of "remainingSearchSpaceLength".
-                int remainingSearchSpaceLength = searchSpaceLength - index - valueTailLength;
-                if (remainingSearchSpaceLength <= 0)
-                    break;  // The unsearched portion is now shorter than the sequence we're looking for. So it can't be there.
-
-                // Do a quick search for the first element of "value".
-                int relativeIndex = LastIndexOf(ref searchSpace, valueHead, remainingSearchSpaceLength);
-                if (relativeIndex == -1)
-                    break;
-
-                // Found the first element of "value". See if the tail matches.
-                if (SequenceEqual(ref Unsafe.Add(ref searchSpace, relativeIndex + 1), ref valueTail, valueTailLength))
-                    return relativeIndex;  // The tail matched. Return a successful find.
-
-                index += remainingSearchSpaceLength - relativeIndex;
-            }
-            return -1;
-        }
-
         public static int LastIndexOf<T>(ref T searchSpace, T value, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             if (default(T)! != null || (object)value != null) // TODO-NULLABLE: default(T) == null warning (https://github.com/dotnet/roslyn/issues/34757)
@@ -553,6 +474,9 @@ namespace System
 
         public static int LastIndexOfAny<T>(ref T searchSpace, T value0, T value1, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte)));
+
             Debug.Assert(length >= 0);
 
             T lookUp;
@@ -656,6 +580,9 @@ namespace System
 
         public static int LastIndexOfAny<T>(ref T searchSpace, T value0, T value1, T value2, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte)));
+
             Debug.Assert(length >= 0);
 
             T lookUp;
@@ -777,6 +704,9 @@ namespace System
 
         public static bool SequenceEqual<T>(ref T first, ref T second, int length) where T : IEquatable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(!RuntimeHelpers.IsBitwiseEquatable<T>() || !(Unsafe.SizeOf<T>() == sizeof(byte) || Unsafe.SizeOf<T>() == sizeof(char)));
+
             Debug.Assert(length >= 0);
 
             if (Unsafe.AreSame(ref first, ref second))
@@ -869,6 +799,9 @@ namespace System
         public static int SequenceCompareTo<T>(ref T first, int firstLength, ref T second, int secondLength)
             where T : IComparable<T>
         {
+            // The optimized implementation should be used for these types
+            Debug.Assert(typeof(T) != typeof(byte) && typeof(T) != typeof(char));
+
             Debug.Assert(firstLength >= 0);
             Debug.Assert(secondLength >= 0);
 

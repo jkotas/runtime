@@ -493,27 +493,28 @@ namespace System
         /// </summary>
         /// <param name="span">The span to search.</param>
         /// <param name="value">The sequence to search for.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> value) where T : IEquatable<T>
         {
-            if (RuntimeHelpers.IsBitwiseEquatable<T>())
+            if (value.Length == 0)
+                return 0;  // A zero-length sequence is always treated as "found" at the start of the search space.
+
+            int index = 0;
+            while (value.Length <= span.Length)
             {
-                if (Unsafe.SizeOf<T>() == sizeof(byte))
-                    return SpanHelpers.IndexOf(
-                        ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                        span.Length,
-                        ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(value)),
-                        value.Length);
+                // Do a quick search for the first element of "value".
+                int relativeIndex = span.Slice(0, span.Length - (value.Length - 1)).IndexOf(value[0]);
+                if (relativeIndex < 0)
+                    break;
 
-                if (Unsafe.SizeOf<T>() == sizeof(char))
-                    return SpanHelpers.IndexOf(
-                        ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                        span.Length,
-                        ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(value)),
-                        value.Length);
+                span = span.Slice(relativeIndex + 1);
+                index += relativeIndex;
+
+                if (span.StartsWith(value.Slice(1)))
+                    return index;
+
+                index++;
             }
-
-            return SpanHelpers.IndexOf(ref MemoryMarshal.GetReference(span), span.Length, ref MemoryMarshal.GetReference(value), value.Length);
+            return -1;
         }
 
         /// <summary>
@@ -521,25 +522,24 @@ namespace System
         /// </summary>
         /// <param name="span">The span to search.</param>
         /// <param name="value">The value to search for.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int LastIndexOf<T>(this ReadOnlySpan<T> span, T value) where T : IEquatable<T>
         {
-            if (RuntimeHelpers.IsBitwiseEquatable<T>())
+            if (value.Length == 0)
+                return 0;  // A zero-length sequence is always treated as "found" at the start of the search space.
+
+            while (value.Length <= span.Length)
             {
-                if (Unsafe.SizeOf<T>() == sizeof(byte))
-                    return SpanHelpers.LastIndexOf(
-                            ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                            Unsafe.As<T, byte>(ref value),
-                            span.Length);
+                // Do a quick search for the first element of "value".
+                int index = span.Slice(0, span.Length - (value.Length - 1)).LastIndexOf(value[0]);
+                if (index < 0)
+                    break;
 
-                if (Unsafe.SizeOf<T>() == sizeof(char))
-                    return SpanHelpers.LastIndexOf(
-                        ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                        Unsafe.As<T, char>(ref value),
-                        span.Length);
+                span = span.Slice(0, relativeIndex);
+
+                if (span.EndsWith(value.Slice(1)))
+                    return index;
             }
-
-            return SpanHelpers.LastIndexOf<T>(ref MemoryMarshal.GetReference(span), value, span.Length);
+            return -1;
         }
 
         /// <summary>
@@ -626,7 +626,6 @@ namespace System
         /// </summary>
         /// <param name="span">The span to search.</param>
         /// <param name="values">The set of values to search for.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOfAny<T>(this Span<T> span, ReadOnlySpan<T> values) where T : IEquatable<T>
         {
             if (RuntimeHelpers.IsBitwiseEquatable<T>())
@@ -664,36 +663,13 @@ namespace System
                 if (Unsafe.SizeOf<T>() == sizeof(char))
                 {
                     ref char valueRef = ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(values));
-                    if (values.Length == 5)
-                    {
-                        // Length 5 is a common length for FileSystemName expression (", <, >, *, ?) and in preference to 2 as it has an explicit overload
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            Unsafe.Add(ref valueRef, 3),
-                            Unsafe.Add(ref valueRef, 4),
-                            span.Length);
-                    }
-                    else if (values.Length == 2)
+                    if (values.Length == 2)
                     {
                         // Length 2 is a common length for simple wildcards (*, ?),  directory separators (/, \), quotes (", '), brackets, etc
                         return SpanHelpers.IndexOfAny(
                             ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
                             valueRef,
                             Unsafe.Add(ref valueRef, 1),
-                            span.Length);
-                    }
-                    else if (values.Length == 4)
-                    {
-                        // Length 4 before 3 as 3 has an explicit overload
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            Unsafe.Add(ref valueRef, 3),
                             span.Length);
                     }
                     else if (values.Length == 3)
@@ -786,98 +762,40 @@ namespace System
         /// </summary>
         /// <param name="span">The span to search.</param>
         /// <param name="values">The set of values to search for.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOfAny<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> values) where T : IEquatable<T>
         {
-            if (RuntimeHelpers.IsBitwiseEquatable<T>())
+            if (values.Length < 3)
             {
-                if (Unsafe.SizeOf<T>() == sizeof(byte))
+                if (values.Length == 2)
                 {
-                    ref byte valueRef = ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(values));
-                    if (values.Length == 2)
-                    {
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            span.Length);
-                    }
-                    else if (values.Length == 3)
-                    {
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            span.Length);
-                    }
-                    else
-                    {
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                            span.Length,
-                            ref valueRef,
-                            values.Length);
-                    }
+                    return IndexOfAny(span, values[0], values[1]);
                 }
-
-                if (Unsafe.SizeOf<T>() == sizeof(char))
+                else if (values.Length == 3)
                 {
-                    ref char valueRef = ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(values));
-                    if (values.Length == 5)
-                    {
-                        // Length 5 is a common length for FileSystemName expression (", <, >, *, ?) and in preference to 2 as it has an explicit overload
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            Unsafe.Add(ref valueRef, 3),
-                            Unsafe.Add(ref valueRef, 4),
-                            span.Length);
-                    }
-                    else if (values.Length == 2)
-                    {
-                        // Length 2 is a common length for simple wildcards (*, ?),  directory separators (/, \), quotes (", '), brackets, etc
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            span.Length);
-                    }
-                    else if (values.Length == 4)
-                    {
-                        // Length 4 before 3 as 3 has an explicit overload
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            Unsafe.Add(ref valueRef, 3),
-                            span.Length);
-                    }
-                    else if (values.Length == 3)
-                    {
-                        return SpanHelpers.IndexOfAny(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            Unsafe.Add(ref valueRef, 1),
-                            Unsafe.Add(ref valueRef, 2),
-                            span.Length);
-                    }
-                    else if (values.Length == 1)
-                    {
-                        // Length 1 last, as ctoring a ReadOnlySpan to call this overload for a single value
-                        // is already throwing away a bunch of performance vs just calling IndexOf
-                        return SpanHelpers.IndexOf(
-                            ref Unsafe.As<T, char>(ref MemoryMarshal.GetReference(span)),
-                            valueRef,
-                            span.Length);
-                    }
+                    return IndexOfAny(span, values[0], values[1], values[2]);
                 }
+                else if (values.Length == 1)
+                {
+                    return IndexOf(span, values[0]);
+                }
+                return -1;  // A zero-length set of values is always treated as "not found".
             }
 
-            return SpanHelpers.IndexOfAny(ref MemoryMarshal.GetReference(span), span.Length, ref MemoryMarshal.GetReference(values), values.Length);
+            int index = -1;
+            for (int i = 0; i < values.Length; i++)
+            {
+                int tempIndex = span.IndexOf(values[i]);
+                if (tempIndex >= 0)
+                {
+                    index = tempIndex;
+                    if (index == 0)
+                        break;
+
+                    // Reduce space for search, cause we don't care if we find the search value after the index of a previously found value
+                    span = span.Slice(0, index);
+                }
+            }
+            return index;
         }
 
         /// <summary>
@@ -983,17 +901,40 @@ namespace System
         /// </summary>
         /// <param name="span">The span to search.</param>
         /// <param name="values">The set of values to search for.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int LastIndexOfAny<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> values) where T : IEquatable<T>
         {
-            if (Unsafe.SizeOf<T>() == sizeof(byte) && RuntimeHelpers.IsBitwiseEquatable<T>())
-                return SpanHelpers.LastIndexOfAny(
-                    ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(span)),
-                    span.Length,
-                    ref Unsafe.As<T, byte>(ref MemoryMarshal.GetReference(values)),
-                    values.Length);
+            if (values.Length < 3)
+            {
+                if (values.Length == 2)
+                {
+                    return LastIndexOfAny(span, values[0], values[1]);
+                }
+                else if (values.Length == 3)
+                {
+                    return LastIndexOfAny(span, values[0], values[1], values[2]);
+                }
+                else if (values.Length == 1)
+                {
+                    return LastIndexOf(span, values[0]);
+                }
+                return -1;  // A zero-length set of values is always treated as "not found".
+            }
 
-            return SpanHelpers.LastIndexOfAny<T>(ref MemoryMarshal.GetReference(span), span.Length, ref MemoryMarshal.GetReference(values), values.Length);
+            int index = -1;
+            for (int i = 0; i < values.Length; i++)
+            {
+                int tempIndex = span.LastIndexOf(values[i]);
+                if (tempIndex >= 0)
+                {
+                    index += tempIndex + 1;
+
+                    // Reduce space for search, cause we don't care if we find the search value before the index of a previously found value
+                    span = span.Slice(tempIndex + 1);
+                    if (span.Length == 0)
+                        break;
+                }
+            }
+            return index;
         }
 
         /// <summary>
