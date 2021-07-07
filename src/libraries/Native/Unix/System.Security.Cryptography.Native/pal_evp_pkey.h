@@ -5,6 +5,8 @@
 #include "pal_compiler.h"
 #include "opensslshim.h"
 
+PALEXPORT EVP_PKEY* CryptoNative_LoadPrivateKeyUsingEngine(char* engine, char* file);
+
 /*
 Shims the EVP_PKEY_new method.
 

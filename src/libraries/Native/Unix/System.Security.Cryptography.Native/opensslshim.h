@@ -17,6 +17,7 @@
 #include <openssl/dsa.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
+#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -261,6 +262,10 @@ const EVP_CIPHER* EVP_chacha20_poly1305(void);
     REQUIRED_FUNCTION(EC_POINT_mul) \
     REQUIRED_FUNCTION(EC_POINT_new) \
     REQUIRED_FUNCTION(EC_POINT_set_affine_coordinates_GFp) \
+    REQUIRED_FUNCTION(ENGINE_by_id) \
+    REQUIRED_FUNCTION(ENGINE_finish) \
+    REQUIRED_FUNCTION(ENGINE_init) \
+    REQUIRED_FUNCTION(ENGINE_load_private_key) \
     REQUIRED_FUNCTION(ERR_clear_error) \
     REQUIRED_FUNCTION(ERR_error_string_n) \
     REQUIRED_FUNCTION(ERR_get_error) \
@@ -697,6 +702,10 @@ FOR_ALL_OPENSSL_FUNCTIONS
 #define EC_POINT_mul EC_POINT_mul_ptr
 #define EC_POINT_new EC_POINT_new_ptr
 #define EC_POINT_set_affine_coordinates_GFp EC_POINT_set_affine_coordinates_GFp_ptr
+#define ENGINE_by_id ENGINE_by_id_ptr
+#define ENGINE_finish ENGINE_finish_ptr
+#define ENGINE_init ENGINE_init_ptr
+#define ENGINE_load_private_key ENGINE_load_private_key_ptr
 #define ERR_clear_error ERR_clear_error_ptr
 #define ERR_error_string_n ERR_error_string_n_ptr
 #define ERR_get_error ERR_get_error_ptr

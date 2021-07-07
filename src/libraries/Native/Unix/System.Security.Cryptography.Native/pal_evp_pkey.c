@@ -4,6 +4,27 @@
 #include <assert.h>
 #include "pal_evp_pkey.h"
 
+EVP_PKEY* CryptoNative_LoadPrivateKeyUsingEngine(char* engine, char* file)
+{
+   EVP_PKEY* pkey;
+   ENGINE* e;
+
+   e = ENGINE_by_id(engine);
+   if (e == NULL)
+   {
+      return NULL;
+   }
+
+   if (!ENGINE_init(e))
+   {
+       return NULL;
+   }
+
+   pkey = ENGINE_load_private_key(e, file, NULL, NULL);
+   ENGINE_finish(e);
+   return pkey;
+}
+
 EVP_PKEY* CryptoNative_EvpPkeyCreate()
 {
     return EVP_PKEY_new();
