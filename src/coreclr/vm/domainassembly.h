@@ -161,12 +161,6 @@ public:
         return m_fCollectible;
     }
 
-    ULONG HashIdentity()
-    {
-        WRAPPER_NO_CONTRACT;
-        return GetPEAssembly()->HashIdentity();
-    }
-
     // ------------------------------------------------------------
     // Loading state checks
     // ------------------------------------------------------------
@@ -341,9 +335,6 @@ public:
     void DeliverAsyncEvents();
     void FinishLoad();
     void Activate();
-
-    void RegisterWithHostAssembly();
-    void UnregisterFromHostAssembly();
 #endif
 
     // This should be used to permanently set the load to fail. Do not use with transient conditions
@@ -452,7 +443,6 @@ private:
     ExInfo*                     m_pError;
 
     BOOL                        m_bDisableActivationCheck;
-    BOOL                        m_fHostAssemblyPublished;
 
     // m_pDynamicMethodTable is used by the light code generation to allow method
     // generation on the fly. They are lazily created when/if a dynamic method is requested

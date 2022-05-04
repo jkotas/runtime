@@ -264,11 +264,6 @@ public:
         m_debuggerFlags = (DebuggerAssemblyControlFlags) (m_debuggerFlags | DACF_PDBS_COPIED);
     }
 
-    ULONG HashIdentity()
-    {
-        return GetPEAssembly()->HashIdentity();
-    }
-
     //****************************************************************************************
     //
     // Uses the given token to load a module or another assembly. Returns the module in

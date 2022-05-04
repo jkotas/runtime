@@ -1096,7 +1096,7 @@ public:
 
 #endif // DACCESS_COMPILE
 
-    DefaultAssemblyBinder *GetDefaultBinder() {LIMITED_METHOD_CONTRACT;  return m_pDefaultBinder; }
+    AssemblyBinder *GetDefaultBinder() {LIMITED_METHOD_CONTRACT;  return m_pDefaultBinder; }
 
     CrstExplicitInit * GetLoaderAllocatorReferencesLock()
     {
@@ -1127,7 +1127,7 @@ protected:
     ListLock         m_ILStubGenLock;
     ListLock         m_NativeTypeLoadLock;
 
-    DefaultAssemblyBinder *m_pDefaultBinder; // Reference to the binding context that holds TPA list details
+    AssemblyBinder *m_pDefaultBinder; // Reference to the binding context that holds TPA list details
 
     IGCHandleStore* m_handleStore;
 
@@ -1146,10 +1146,6 @@ protected:
     static CrstStatic   m_SpecialStaticsCrst;
 
 public:
-    // Only call this routine when you can guarantee there are no
-    // loads in progress.
-    void ClearBinderContext();
-
     //****************************************************************************************
     // Synchronization holders.
 
@@ -1971,7 +1967,7 @@ public:
         return m_tpIndex;
     }
 
-    DefaultAssemblyBinder *CreateDefaultBinder();
+    AssemblyBinder *CreateDefaultBinder();
 
     void SetIgnoreUnhandledExceptions()
     {
@@ -2036,7 +2032,6 @@ public:
     static void RaiseExitProcessEvent();
     Assembly* RaiseResourceResolveEvent(DomainAssembly* pAssembly, LPCSTR szName);
     DomainAssembly* RaiseTypeResolveEventThrowing(DomainAssembly* pAssembly, LPCSTR szName, ASSEMBLYREF *pResultingAssemblyRef);
-    Assembly* RaiseAssemblyResolveEvent(AssemblySpec *pSpec);
 
 private:
     CrstExplicitInit    m_ReflectionCrst;
@@ -2098,13 +2093,6 @@ private:
 #ifdef FEATURE_COMINTEROP
     DispIDCache* SetupRefDispIDCache();
 #endif // FEATURE_COMINTEROP
-
-private:
-    PEAssembly *TryResolveAssemblyUsingEvent(AssemblySpec *pSpec);
-    BOOL PostBindResolveAssembly(AssemblySpec  *pPrePolicySpec,
-                                 AssemblySpec  *pPostPolicySpec,
-                                 HRESULT        hrBindResult,
-                                 AssemblySpec **ppFailedSpec);
 
 #ifdef FEATURE_COMINTEROP
 public:
@@ -2559,43 +2547,6 @@ public:
 #endif // DACCESS_COMPILE
 
     //****************************************************************************************
-    LPCWSTR BaseLibrary()
-    {
-        WRAPPER_NO_CONTRACT;
-
-        return m_BaseLibrary;
-    }
-
-#ifndef DACCESS_COMPILE
-    BOOL IsBaseLibrary(SString &path)
-    {
-        WRAPPER_NO_CONTRACT;
-
-        // See if it is the installation path to CoreLib
-        if (path.EqualsCaseInsensitive(m_BaseLibrary))
-            return TRUE;
-
-        // Or, it might be the location of CoreLib
-        if (System()->SystemAssembly() != NULL
-            && path.EqualsCaseInsensitive(System()->SystemAssembly()->GetPEAssembly()->GetPath()))
-            return TRUE;
-
-        return FALSE;
-    }
-
-    BOOL IsBaseLibrarySatellite(SString &path)
-    {
-        WRAPPER_NO_CONTRACT;
-
-        // See if it is the installation path to corelib.resources
-        SString s(SString::Ascii,g_psBaseLibrarySatelliteAssemblyName);
-        if (path.EqualsCaseInsensitive(s))
-            return TRUE;
-
-        return FALSE;
-    }
-#endif // DACCESS_COMPILE
-
     // Return the system directory
     LPCWSTR SystemDirectory()
     {
@@ -2631,9 +2582,6 @@ private:
     PTR_Assembly    m_pSystemAssembly;  // Single assembly (here for quicker reference);
 
     GlobalLoaderAllocator m_GlobalAllocator;
-
-
-    InlineSString<100>  m_BaseLibrary;
 
     InlineSString<100>  m_SystemDirectory;
 

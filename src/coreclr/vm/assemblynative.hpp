@@ -15,7 +15,7 @@
 #ifndef _ASSEMBLYNATIVE_H
 #define _ASSEMBLYNATIVE_H
 
-class CustomAssemblyBinder;
+class AssemblyBinder;
 
 class AssemblyNative
 {

@@ -672,18 +672,12 @@ HRESULT CorHost2::CreateAppDomainWithManager(
 
     pDomain->SetNativeDllSearchDirectories(pwzNativeDllSearchDirectories);
 
-    {
-        SString sTrustedPlatformAssemblies(pwzTrustedPlatformAssemblies);
-        SString sPlatformResourceRoots(pwzPlatformResourceRoots);
-        SString sAppPaths(pwzAppPaths);
-
-        DefaultAssemblyBinder *pBinder = pDomain->GetDefaultBinder();
-        _ASSERTE(pBinder != NULL);
-        IfFailThrow(pBinder->SetupBindingPaths(
-            sTrustedPlatformAssemblies,
-            sPlatformResourceRoots,
-            sAppPaths));
-    }
+    AssemblyBinder *pBinder = pDomain->GetDefaultBinder();
+    _ASSERTE(pBinder != NULL);
+    pBinder->SetupBindingPaths(
+        pwzTrustedPlatformAssemblies,
+        pwzPlatformResourceRoots,
+        pwzAppPaths);
 
     *pAppDomainID=DefaultADID;
 

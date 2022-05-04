@@ -44,7 +44,6 @@ DomainAssembly::DomainAssembly(AppDomain* pDomain, PEAssembly* pPEAssembly, Load
     m_hExposedAssemblyObject(NULL),
     m_pError(NULL),
     m_bDisableActivationCheck(FALSE),
-    m_fHostAssemblyPublished(FALSE),
     m_pDynamicMethodTable(NULL),
     m_debuggerFlags(DACF_NONE),
     m_notifyflags(NOT_NOTIFIED),
@@ -81,12 +80,6 @@ DomainAssembly::~DomainAssembly()
         m_pDynamicMethodTable->Destroy();
 
     delete m_pError;
-
-    if (m_fHostAssemblyPublished)
-    {
-        // Remove association first.
-        UnregisterFromHostAssembly();
-    }
 
     if (m_pAssembly != NULL)
     {
@@ -709,41 +702,9 @@ void DomainAssembly::Begin()
         AppDomain::LoadLockHolder lock(m_pDomain);
         m_pDomain->AddAssembly(this);
     }
-    // Make it possible to find this DomainAssembly object from associated BINDER_SPACE::Assembly.
-    RegisterWithHostAssembly();
-    m_fHostAssemblyPublished = true;
-}
 
-void DomainAssembly::RegisterWithHostAssembly()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-        MODE_ANY;
-    }
-    CONTRACTL_END
-
-    if (GetPEAssembly()->HasHostAssembly())
-    {
-        GetPEAssembly()->GetHostAssembly()->SetDomainAssembly(this);
-    }
-}
-
-void DomainAssembly::UnregisterFromHostAssembly()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-        MODE_ANY;
-    }
-    CONTRACTL_END
-
-    if (GetPEAssembly()->HasHostAssembly())
-    {
-        GetPEAssembly()->GetHostAssembly()->SetDomainAssembly(nullptr);
-    }
+    // Make it possible to find this DomainAssembly object from associated PEAssembly.
+    GetPEAssembly()->SetDomainAssembly(this);
 }
 
 void DomainAssembly::Allocate()

@@ -28,8 +28,8 @@
 #include "threadsuspend.h"
 
 #include "appdomainnative.hpp"
-#include "../binder/inc/bindertracing.h"
-#include "../binder/inc/defaultassemblybinder.h"
+// #include "../binder/inc/bindertracing.h"
+// #include "../binder/inc/defaultassemblybinder.h"
 
 extern "C" void QCALLTYPE AssemblyNative_InternalLoad(NativeAssemblyNameParts* pAssemblyNameParts,
                                                       QCall::ObjectHandleOnStack requestingAssembly,
@@ -135,6 +135,10 @@ Assembly* AssemblyNative::LoadFromPEImage(AssemblyBinder* pBinder, PEImage *pIma
     }
     CONTRACT_END;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     Assembly *pLoadedAssembly = NULL;
     ReleaseHolder<BINDER_SPACE::Assembly> pAssembly;
 
@@ -172,6 +176,8 @@ Assembly* AssemblyNative::LoadFromPEImage(AssemblyBinder* pBinder, PEImage *pIma
 
     DomainAssembly *pDomainAssembly = pCurDomain->LoadDomainAssembly(&spec, pPEAssembly, FILE_LOADED);
     RETURN pDomainAssembly->GetAssembly();
+#endif
+    RETURN NULL;
 }
 
 extern "C" void QCALLTYPE AssemblyNative_LoadFromPath(INT_PTR ptrNativeAssemblyBinder, LPCWSTR pwzILPath, LPCWSTR pwzNIPath, QCall::ObjectHandleOnStack retLoadedAssembly)
@@ -180,6 +186,10 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromPath(INT_PTR ptrNativeAssemblyB
 
     BEGIN_QCALL;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     PTR_AppDomain pCurDomain = GetAppDomain();
 
     // Get the binder context in which the assembly will be loaded.
@@ -218,7 +228,7 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromPath(INT_PTR ptrNativeAssemblyB
     LOG((LF_CLASSLOADER,
             LL_INFO100,
             "\tLoaded assembly from a file\n"));
-
+#endif
     END_QCALL;
 }
 
@@ -231,6 +241,10 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromStream(INT_PTR ptrNativeAssembl
 
     BEGIN_QCALL;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     // Ensure that the invariants are in place
     _ASSERTE(ptrNativeAssemblyBinder != NULL);
     _ASSERTE((ptrAssemblyArray != NULL) && (cbAssemblyArrayLength > 0));
@@ -283,7 +297,7 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromStream(INT_PTR ptrNativeAssembl
         }
 #endif // DEBUGGING_SUPPORTED
     }
-
+#endif
     END_QCALL;
 }
 
@@ -295,6 +309,10 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromInMemoryModule(INT_PTR ptrNativ
 
     BEGIN_QCALL;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     // Ensure that the invariants are in place
     _ASSERTE(ptrNativeAssemblyBinder != NULL);
     _ASSERTE(hModule != NULL);
@@ -318,7 +336,7 @@ extern "C" void QCALLTYPE AssemblyNative_LoadFromInMemoryModule(INT_PTR ptrNativ
     LOG((LF_CLASSLOADER,
             LL_INFO100,
             "\tLoaded assembly from pre-loaded native module\n"));
-
+#endif
     END_QCALL;
 }
 #endif
@@ -1121,17 +1139,21 @@ extern "C" INT_PTR QCALLTYPE AssemblyNative_InitializeAssemblyLoadContext(INT_PT
 
     BEGIN_QCALL;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     // We do not need to take a lock since this method is invoked from the ctor of AssemblyLoadContext managed type and
     // only one thread is ever executing a ctor for a given instance.
     //
 
     // Initialize the assembly binder instance in the VM
     PTR_AppDomain pCurDomain = AppDomain::GetCurrentDomain();
-    DefaultAssemblyBinder *pDefaultBinder = pCurDomain->GetDefaultBinder();
+    AssemblyBinder *pDefaultBinder = pCurDomain->GetDefaultBinder();
     if (!fRepresentsTPALoadContext)
     {
         // Initialize a custom assembly binder
-        CustomAssemblyBinder *pCustomBinder = NULL;
+        AssemblyBinder *pCustomBinder = NULL;
 
         AssemblyLoaderAllocator* loaderAllocator = NULL;
         OBJECTHANDLE loaderAllocatorHandle = NULL;
@@ -1166,7 +1188,7 @@ extern "C" INT_PTR QCALLTYPE AssemblyNative_InitializeAssemblyLoadContext(INT_PT
             loaderAllocator->ActivateManagedTracking();
         }
 
-        IfFailThrow(CustomAssemblyBinder::SetupContext(pDefaultBinder, loaderAllocator, loaderAllocatorHandle, ptrManagedAssemblyLoadContext, &pCustomBinder));
+        IfFailThrow(AssemblyBinder::SetupContext(pDefaultBinder, loaderAllocator, loaderAllocatorHandle, ptrManagedAssemblyLoadContext, &pCustomBinder));
         ptrNativeAssemblyBinder = reinterpret_cast<INT_PTR>(pCustomBinder);
     }
     else
@@ -1179,7 +1201,7 @@ extern "C" INT_PTR QCALLTYPE AssemblyNative_InitializeAssemblyLoadContext(INT_PT
         pDefaultBinder->SetManagedAssemblyLoadContext(ptrManagedAssemblyLoadContext);
         ptrNativeAssemblyBinder = reinterpret_cast<INT_PTR>(pDefaultBinder);
     }
-
+#endif
     END_QCALL;
 
     return ptrNativeAssemblyBinder;
@@ -1194,12 +1216,15 @@ extern "C" void QCALLTYPE AssemblyNative_PrepareForAssemblyLoadContextRelease(IN
 
     BEGIN_QCALL;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
 
+#if 0
     {
         GCX_COOP();
-        reinterpret_cast<CustomAssemblyBinder *>(ptrNativeAssemblyBinder)->PrepareForLoadContextRelease(ptrManagedStrongAssemblyLoadContext);
+        reinterpret_cast<AssemblyBinder *>(ptrNativeAssemblyBinder)->PrepareForLoadContextRelease(ptrManagedStrongAssemblyLoadContext);
     }
-
+#endif
     END_QCALL;
 }
 
@@ -1259,7 +1284,11 @@ FCIMPL0(FC_BOOL_RET, AssemblyNative::IsTracingEnabled)
 {
     FCALL_CONTRACT;
 
-    FC_RETURN_BOOL(BinderTracing::IsEnabled());
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+    // FC_RETURN_BOOL(BinderTracing::IsEnabled());
+    FC_RETURN_BOOL(FALSE);
 }
 FCIMPLEND
 
@@ -1306,7 +1335,10 @@ extern "C" void QCALLTYPE AssemblyNative_TraceSatelliteSubdirectoryPathProbed(LP
 
     BEGIN_QCALL;
 
-    BinderTracing::PathProbed(filePath, BinderTracing::PathSource::SatelliteSubdirectory, hr);
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+    // BinderTracing::PathProbed(filePath, BinderTracing::PathSource::SatelliteSubdirectory, hr);
 
     END_QCALL;
 }

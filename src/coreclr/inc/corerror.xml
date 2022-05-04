@@ -2079,12 +2079,6 @@
 	<Comment>For AppX binder, indicates that bound assembly's public key token doesn't match the key in the assembly name.</Comment>
 </HRESULT>
 
-<HRESULT NumericValue="0x80132002">
-	<SymbolicName>CLR_E_BIND_IMAGE_UNAVAILABLE</SymbolicName>
-	<Message>"The requested image was not found or is unavailable."</Message>
-	<Comment>Occurs if a request for a native image is made on an BINDER_SPACE::Assembly interface when one is not available.</Comment>
-</HRESULT>
-
 <HRESULT NumericValue="0x80132003">
 	<SymbolicName>CLR_E_BIND_UNRECOGNIZED_IDENTITY_FORMAT</SymbolicName>
 	<Message>"The provided identity format is not recognized."</Message>

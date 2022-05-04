@@ -24,7 +24,7 @@
 #include "eventtrace.h"
 #include "assemblynative.hpp"
 
-#include "../binder/inc/bindertracing.h"
+// #include "../binder/inc/bindertracing.h"
 
 #ifdef _DEBUG
 // This debug-only wrapper for LookupAssembly is solely for the use of postconditions and
@@ -272,6 +272,10 @@ void AssemblySpec::InitializeAssemblyNameRef(_In_ BINDER_SPACE::AssemblyName* as
     }
     CONTRACTL_END;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     AssemblySpec spec;
     spec.InitializeWithAssemblyIdentity(assemblyName);
 
@@ -286,6 +290,7 @@ void AssemblySpec::InitializeAssemblyNameRef(_In_ BINDER_SPACE::AssemblyName* as
     }
 
     spec.AssemblyNameInit(assemblyNameRef);
+#endif
 }
 
 
@@ -410,7 +415,7 @@ AssemblyBinder* AssemblySpec::GetBinderFromParentAssembly(AppDomain *pDomain)
         //
         // In such a case, the parent assembly (semantically) is CoreLibrary and thus, the default binding context should be
         // used as the parent assembly binder.
-        pParentAssemblyBinder = static_cast<AssemblyBinder*>(pDomain->GetDefaultBinder());
+        pParentAssemblyBinder = pDomain->GetDefaultBinder();
     }
 
     return pParentAssemblyBinder;
@@ -431,6 +436,10 @@ DomainAssembly *AssemblySpec::LoadDomainAssembly(FileLoadLevel targetLevel,
     }
     CONTRACT_END;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     ETWOnStartup (LoaderCatchCall_V1, LoaderCatchCallEnd_V1);
     AppDomain* pDomain = GetAppDomain();
 
@@ -451,6 +460,8 @@ DomainAssembly *AssemblySpec::LoadDomainAssembly(FileLoadLevel targetLevel,
     pAssembly = pDomain->LoadDomainAssembly(this, pFile, targetLevel);
 
     RETURN pAssembly;
+#endif
+    RETURN NULL;
 }
 
 /* static */
@@ -986,6 +997,10 @@ BOOL AssemblySpecBindingCache::StorePEAssembly(AssemblySpec *pSpec, PEAssembly *
     }
     CONTRACT_END;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     UPTR key = (UPTR)pSpec->Hash();
 
     AssemblyBinder* pBinderContextForLookup = pPEAssembly->GetAssemblyBinder();
@@ -1047,6 +1062,8 @@ BOOL AssemblySpecBindingCache::StorePEAssembly(AssemblySpec *pSpec, PEAssembly *
         // Invalid cache transition (see above note about state transitions)
         RETURN FALSE;
     }
+#endif
+    RETURN FALSE;
 }
 
 BOOL AssemblySpecBindingCache::StoreException(AssemblySpec *pSpec, Exception* pEx)

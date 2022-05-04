@@ -10,7 +10,6 @@
 #include "eeconfig.h"
 #include "appdomain.inl"
 #include "eventtrace.h"
-#include "../binder/inc/defaultassemblybinder.h"
 
 // static
 extern "C" void QCALLTYPE AppDomain_CreateDynamicAssembly(QCall::ObjectHandleOnStack assemblyLoadContext, NativeAssemblyNameParts* pAssemblyNameParts, INT32 hashAlgorithm, INT32 access, QCall::ObjectHandleOnStack retAssembly)
