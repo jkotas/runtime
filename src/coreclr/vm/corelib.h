@@ -1035,9 +1035,7 @@ DEFINE_METHOD(ANSICHARMARSHALER,    CONVERT_TO_MANAGED,     ConvertToManaged,   
 DEFINE_METHOD(ANSICHARMARSHALER,    DO_ANSI_CONVERSION,     DoAnsiConversion,           SM_Str_Bool_Bool_RefInt_RetArrByte)
 
 DEFINE_CLASS(CSTRMARSHALER,         StubHelpers,            CSTRMarshaler)
-DEFINE_METHOD(CSTRMARSHALER,        CONVERT_TO_NATIVE,      ConvertToNative,            SM_Int_Str_IntPtr_RetIntPtr)
 DEFINE_METHOD(CSTRMARSHALER,        CONVERT_FIXED_TO_NATIVE,ConvertFixedToNative,       SM_Int_Str_IntPtr_Int_RetVoid)
-DEFINE_METHOD(CSTRMARSHALER,        CONVERT_TO_MANAGED,     ConvertToManaged,           SM_IntPtr_RetStr)
 DEFINE_METHOD(CSTRMARSHALER,        CONVERT_FIXED_TO_MANAGED,ConvertFixedToManaged,     SM_IntPtr_Int_RetStr)
 
 DEFINE_CLASS(FIXEDWSTRMARSHALER,   StubHelpers,            FixedWSTRMarshaler)

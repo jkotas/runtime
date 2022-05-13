@@ -1600,8 +1600,10 @@ namespace Internal.TypeSystem.Interop
 
         internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
         {
+            Debug.Assert(_marshallerInstance is null);
+
             codeStream.Emit(ILOpcode.call, emitter.NewToken(
-                                InteropTypes.GetMarshal(Context).GetKnownMethod("FreeCoTaskMem", null)));
+                                InteropTypes.GetMarshal(Context).GetKnownMethod("CoTaskMemFree", null)));
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
@@ -1611,6 +1613,8 @@ namespace Internal.TypeSystem.Interop
             //
             // ANSI marshalling. Allocate a byte array, copy characters
             //
+
+            !!!
             LoadManagedValue(codeStream);
             var stringToAnsi = Context.GetHelperEntryPoint("InteropHelpers", "StringToAnsiString");
 
@@ -1625,7 +1629,10 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            !!!!!!!!!!!!!!
             var ansiToString = Context.GetHelperEntryPoint("InteropHelpers", "AnsiStringToString");
+
             LoadNativeValue(codeStream);
             codeStream.Emit(ILOpcode.call, emitter.NewToken(ansiToString));
             StoreManagedValue(codeStream);
@@ -1634,6 +1641,8 @@ namespace Internal.TypeSystem.Interop
         protected override void EmitCleanupManaged(ILCodeStream codeStream)
         {
             var emitter = _ilCodeStreams.Emitter;
+
+            !!!
             var lNullCheck = emitter.NewCodeLabel();
 
             // Check for null array

@@ -81,7 +81,7 @@ namespace System.Runtime.InteropServices
         }
 
         // Returns number of bytes required to convert given string to Ansi string. The return value includes null terminator.
-        internal static unsafe int GetAnsiStringByteCount(ReadOnlySpan<char> chars)
+        internal static unsafe int GetAnsiStringByteCount(ReadOnlySpan<char> chars, bool bestFit = false, bool throwOnUnmappableChar = false)
         {
             int byteLength;
 
@@ -91,10 +91,18 @@ namespace System.Runtime.InteropServices
             }
             else
             {
+                uint flags = bestFit ? 0 : Interop.Kernel32.WC_NO_BEST_FIT_CHARS;
+                BOOL defaultCharUsed = BOOL.FALSE;
+
                 fixed (char* pChars = chars)
                 {
                     byteLength = Interop.Kernel32.WideCharToMultiByte(
-                        Interop.Kernel32.CP_ACP, Interop.Kernel32.WC_NO_BEST_FIT_CHARS, pChars, chars.Length, null, 0, null, null);
+                        Interop.Kernel32.CP_ACP, flags, pChars, chars.Length, null, 0,
+                        null, throwOnUnmappableChar ? &defaultCharUsed : null);
+
+                    if (defaultCharUsed != BOOL.FALSE)
+                        throw new ArgumentException(SR.Interop_Marshal_Unmappable_Char);
+
                     if (byteLength <= 0)
                         throw new ArgumentException();
                 }
@@ -104,7 +112,7 @@ namespace System.Runtime.InteropServices
         }
 
         // Converts given string to Ansi string. The destination buffer must be large enough to hold the converted value, including null terminator.
-        internal static unsafe void GetAnsiStringBytes(ReadOnlySpan<char> chars, Span<byte> bytes)
+        internal static unsafe void GetAnsiStringBytes(ReadOnlySpan<char> chars, Span<byte> bytes, bool bestFit = false, bool throwOnUnmappableChar = false)
         {
             int byteLength;
 
@@ -118,7 +126,12 @@ namespace System.Runtime.InteropServices
                 fixed (byte* pBytes = bytes)
                 {
                     byteLength = Interop.Kernel32.WideCharToMultiByte(
-                       Interop.Kernel32.CP_ACP, Interop.Kernel32.WC_NO_BEST_FIT_CHARS, pChars, chars.Length, pBytes, bytes.Length, null, null);
+                       Interop.Kernel32.CP_ACP, Interop.Kernel32.WC_NO_BEST_FIT_CHARS, pChars, chars.Length, pBytes, bytes.Length,
+                       null, throwOnUnmappableChar ? &defaultCharUsed : null);
+
+                    if (defaultCharUsed != BOOL.FALSE)
+                        throw new ArgumentException(SR.Interop_Marshal_Unmappable_Char);
+
                     if (byteLength <= 0)
                         throw new ArgumentException();
                 }

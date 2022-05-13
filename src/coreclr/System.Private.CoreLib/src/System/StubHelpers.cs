@@ -43,82 +43,9 @@ namespace System.StubHelpers
 
     internal static class CSTRMarshaler
     {
-        internal static unsafe IntPtr ConvertToNative(int flags, string strManaged, IntPtr pNativeBuffer)
-        {
-            if (null == strManaged)
-            {
-                return IntPtr.Zero;
-            }
 
-            int nb;
-            byte* pbNativeBuffer = (byte*)pNativeBuffer;
-
-            if (pbNativeBuffer != null || Marshal.SystemMaxDBCSCharSize == 1)
-            {
-                // If we are marshaling into a stack buffer or we can accurately estimate the size of the required heap
-                // space, we will use a "1-pass" mode where we convert the string directly into the unmanaged buffer.
-
-                // + 1 for the null character from the user.  + 1 for the null character we put in.
-                nb = checked((strManaged.Length + 1) * Marshal.SystemMaxDBCSCharSize + 1);
-
-                bool didAlloc = false;
-
-                // Use the pre-allocated buffer (allocated by localloc IL instruction) if not NULL,
-                // otherwise fallback to AllocCoTaskMem
-                if (pbNativeBuffer == null)
-                {
-                    pbNativeBuffer = (byte*)Marshal.AllocCoTaskMem(nb);
-                    didAlloc = true;
-                }
-
-                try
-                {
-                    nb = Marshal.StringToAnsiString(strManaged, pbNativeBuffer, nb,
-                        bestFit: 0 != (flags & 0xFF), throwOnUnmappableChar: 0 != (flags >> 8));
-                }
+Cleanup on exceptions!!!!
                 catch (Exception) when (didAlloc)
-                {
-                    Marshal.FreeCoTaskMem((IntPtr)pbNativeBuffer);
-                    throw;
-                }
-            }
-            else
-            {
-                if (strManaged.Length == 0)
-                {
-                    nb = 0;
-                    pbNativeBuffer = (byte*)Marshal.AllocCoTaskMem(2);
-                }
-                else
-                {
-                    // Otherwise we use a slower "2-pass" mode where we first marshal the string into an intermediate buffer
-                    // (managed byte array) and then allocate exactly the right amount of unmanaged memory. This is to avoid
-                    // wasting memory on systems with multibyte character sets where the buffer we end up with is often much
-                    // smaller than the upper bound for the given managed string.
-
-                    byte[] bytes = AnsiCharMarshaler.DoAnsiConversion(strManaged,
-                        fBestFit: 0 != (flags & 0xFF), fThrowOnUnmappableChar: 0 != (flags >> 8), out nb);
-
-                    // + 1 for the null character from the user.  + 1 for the null character we put in.
-                    pbNativeBuffer = (byte*)Marshal.AllocCoTaskMem(nb + 2);
-
-                    Buffer.Memmove(ref *pbNativeBuffer, ref MemoryMarshal.GetArrayDataReference(bytes), (nuint)nb);
-                }
-            }
-
-            pbNativeBuffer[nb] = 0x00;
-            pbNativeBuffer[nb + 1] = 0x00;
-
-            return (IntPtr)pbNativeBuffer;
-        }
-
-        internal static unsafe string? ConvertToManaged(IntPtr cstr)
-        {
-            if (IntPtr.Zero == cstr)
-                return null;
-            else
-                return new string((sbyte*)cstr);
-        }
 
         internal static unsafe void ConvertFixedToNative(int flags, string strManaged, IntPtr pNativeBuffer, int length)
         {

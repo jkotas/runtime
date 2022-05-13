@@ -362,61 +362,6 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        /// <summary>
-        /// Convert ANSI string to unicode string, with option to free native memory.
-        /// </summary>
-        /// <remarks>Input assumed to be zero terminated. Generates String.Empty for zero length string.
-        /// This version is more efficient than ConvertToUnicode in src\Interop\System\Runtime\InteropServices\Marshal.cs in that it can skip calling
-        /// MultiByteToWideChar for ASCII string, and it does not need another char[] buffer</remarks>
-        public static unsafe string? AnsiStringToString(byte* pchBuffer)
-        {
-            if (pchBuffer == null)
-            {
-                return null;
-            }
-
-            int lenAnsi;
-            int lenUnicode;
-            CalculateStringLength(pchBuffer, out lenAnsi, out lenUnicode);
-
-            string result = string.Empty;
-
-            if (lenUnicode > 0)
-            {
-                result = string.FastAllocateString(lenUnicode);
-
-                fixed (char* pTemp = result)
-                {
-                    ConvertMultiByteToWideChar(pchBuffer,
-                                               lenAnsi,
-                                               pTemp,
-                                               lenUnicode);
-                }
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Convert UNICODE string to ANSI string.
-        /// </summary>
-        /// <remarks>This version is more efficient than StringToHGlobalAnsi in Interop\System\Runtime\InteropServices\Marshal.cs in that
-        /// it could allocate single byte per character, instead of SystemMaxDBCSCharSize per char, and it can skip calling WideCharToMultiByte for ASCII string</remarks>
-        public static unsafe byte* StringToAnsiString(string str, bool bestFit, bool throwOnUnmappableChar)
-        {
-            if (str != null)
-            {
-                int lenUnicode = str.Length;
-
-                fixed (char* pManaged = str)
-                {
-                    return StringToAnsiString(pManaged, lenUnicode, null, /*terminateWithNull=*/true, bestFit, throwOnUnmappableChar);
-                }
-            }
-
-            return null;
-        }
-
         public static unsafe void WideCharArrayToAnsiCharArray(char[] managedArray, byte* pNative, bool bestFit, bool throwOnUnmappableChar)
         {
             // Do nothing if array is NULL. This matches desktop CLR behavior

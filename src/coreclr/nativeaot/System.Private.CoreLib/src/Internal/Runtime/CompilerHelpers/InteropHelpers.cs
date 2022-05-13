@@ -23,16 +23,6 @@ namespace Internal.Runtime.CompilerHelpers
     /// </summary>
     internal static class InteropHelpers
     {
-        internal static unsafe byte* StringToAnsiString(string str, bool bestFit, bool throwOnUnmappableChar)
-        {
-            return PInvokeMarshal.StringToAnsiString(str, bestFit, throwOnUnmappableChar);
-        }
-
-        public static unsafe string AnsiStringToString(byte* buffer)
-        {
-            return PInvokeMarshal.AnsiStringToString(buffer);
-        }
-
         internal static unsafe void StringToByValAnsiString(string str, byte* pNative, int charCount, bool bestFit, bool throwOnUnmappableChar)
         {
             if (str != null)
