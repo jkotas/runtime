@@ -969,8 +969,49 @@ namespace Internal.Runtime.TypeLoader
             QMethodDefinition methodHandle,
             RuntimeTypeHandle[] genericMethodTypeArgumentHandles,
             ref MethodSignatureComparer methodSignatureComparer,
+            out MethodInvokeMetadata methodInvokeMetadata)
+        {
+#if GENERICS_FORCE_USG
+            // Stress mode to force the usage of universal canonical method targets for reflection invokes.
+            // It is recommended to use "/SharedGenericsMode GenerateAllUniversalGenerics" NUTC command line argument when
+            // compiling the application in order to effectively use the GENERICS_FORCE_USG mode.
+
+            // If we are just trying to invoke a non-generic method on a non-generic type, we won't force the universal lookup
+            if (RuntimeAugments.IsGenericType(declaringTypeHandle) || (genericMethodTypeArgumentHandles != null && genericMethodTypeArgumentHandles.Length != 0))
+            {
+                if (TryGetMethodInvokeMetadata(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
+                    ref methodSignatureComparer, CanonicalFormKind.Universal, out MethodInvokeMetadata methodInvokeMetadata))
+                {
+                    return true;
+                }
+            }
+#endif
+
+            if (TryGetMethodInvokeMetadata(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
+                ref methodSignatureComparer, CanonicalFormKind.Specific, out MethodInvokeMetadata methodInvokeMetadata))
+            {
+                return true;
+            }
+
+#if FEATURE_UNIVERSAL_GENERICS
+            if (TryGetMethodInvokeMetadata(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
+                ref methodSignatureComparer, CanonicalFormKind.Universal, out MethodInvokeMetadata methodInvokeMetadata))
+            {
+                return true;
+            }
+#endif
+
+            return false;
+        }
+
+        private static bool TryGetMethodInvokeMetadata(
+            RuntimeTypeHandle declaringTypeHandle,
+            QMethodDefinition methodHandle,
+            RuntimeTypeHandle[] genericMethodTypeArgumentHandles,
+            ref MethodSignatureComparer methodSignatureComparer,
             CanonicalFormKind canonFormKind,
             out MethodInvokeMetadata methodInvokeMetadata)
+
         {
             if (methodHandle.IsNativeFormatMetadataBased)
             {

@@ -98,6 +98,11 @@
     <Compile Include="Internal\Runtime\CompilerHelpers\RuntimeInteropData.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\SynchronizedMethodHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs" />
+    <Compile Include="Internal\Runtime\TypeLoader\ModuleList.cs" />
+    <Compile Include="Internal\Runtime\TypeLoader\MethodSignatureComparer.cs" />
+    <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormat.cs">
+      <Link>Common\src\Internal\NativeFormat\NativeFormat.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Internal\IntrinsicSupport\ComparerHelpers.cs" />
@@ -394,6 +399,9 @@
     <Compile Include="$(AotCommonPath)\Internal\Runtime\LowLevelStringConverter.cs">
       <Link>Internal\Runtime\LowLevelStringConverter.cs</Link>
     </Compile>
+    <Compile Include="$(CompilerCommonPath)\Internal\Runtime\MappingTableFlags.cs">
+      <Link>Internal\Runtime\MappingTableFlags.cs</Link>
+    </Compile>
   </ItemGroup>
   <!-- Native metadata reader -->
   <PropertyGroup>
@@ -544,6 +552,42 @@
     <Compile Include="Internal\Reflection\Core\Execution\FieldAccessor.cs" />
     <Compile Include="Internal\Reflection\Core\Execution\MethodInvoker.cs" />
     <Compile Include="Internal\Reflection\Core\Execution\ReflectionCoreExecution.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Internal\Reflection\Execution\NativeFormatEnumInfo.cs" />
+    <Compile Include="Internal\Reflection\Execution\TypeLoader\ConstraintValidator.cs" />
+    <Compile Include="Internal\Reflection\Execution\TypeLoader\ConstraintValidatorSupport.cs" />
+    <Compile Include="Internal\Reflection\Execution\TypeLoader\TypeCast.cs" />
+    <Compile Include="Internal\Reflection\Execution\ReflectionExecution.cs" />
+    <Compile Include="Internal\Reflection\Execution\ReflectionDomainSetupImplementation.cs" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.cs" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.Runtime.cs" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MappingTables.cs" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MetadataTable.cs" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.ManifestResources.cs" />
+    <Compile Include="Internal\Reflection\Execution\ReflectionExecutionDomainCallbacksImplementation.cs" />
+    <Compile Include="Internal\Reflection\Execution\MetadataReaderExtensions.cs" />
+    <Compile Include="Internal\Reflection\Execution\MethodInvokeInfo.cs" />
+    <Compile Include="Internal\Reflection\Execution\RuntimeHandlesExtensions.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\InstanceFieldAccessor.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\LiteralFieldAccessor.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\PointerTypeFieldAccessorForInstanceFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\PointerTypeFieldAccessorForStaticFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\RegularStaticFieldAccessor.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\ReferenceTypeFieldAccessorForInstanceFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\ReferenceTypeFieldAccessorForStaticFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\StaticFieldAccessor.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\ValueTypeFieldAccessorForInstanceFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\ValueTypeFieldAccessorForStaticFields.cs" />
+    <Compile Include="Internal\Reflection\Execution\FieldAccessors\WritableStaticFieldAccessor.cs" />
+    <Compile Include="Internal\Reflection\Execution\MethodInvokers\MethodInvokerWithMethodInvokeInfo.cs" />
+    <Compile Include="Internal\Reflection\Execution\MethodInvokers\InstanceMethodInvoker.cs" />
+    <Compile Include="Internal\Reflection\Execution\MethodInvokers\StaticMethodInvoker.cs" />
+    <Compile Include="Internal\Reflection\Execution\MethodInvokers\VirtualMethodInvoker.cs" />
+    <Compile Include="Internal\Reflection\Execution\PayForPlayExperience\DiagnosticMappingTables.cs" />
+    <Compile Include="Internal\Reflection\Execution\PayForPlayExperience\MissingMetadataExceptionCreator.cs" />
+    <Compile Include="Internal\Reflection\Extensions\NonPortable\DelegateMethodInfoRetriever.cs" />
+    <Compile Include="System\Reflection\MissingRuntimeArtifactException.cs" />
   </ItemGroup>
   <!-- For now, link Runtime.Base into System.Private.CoreLib until there is proper multifile build -->
   <PropertyGroup>

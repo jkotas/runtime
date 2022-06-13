@@ -18,7 +18,7 @@ namespace Internal.Runtime
     }
 
     [Flags]
-    public enum InvokeTableFlags : uint
+    internal enum InvokeTableFlags : uint
     {
         HasVirtualInvoke = 0x00000001,
         IsGenericMethod = 0x00000002,
@@ -38,7 +38,7 @@ namespace Internal.Runtime
     }
 
     [Flags]
-    public enum FieldTableFlags : uint
+    internal enum FieldTableFlags : uint
     {
         Instance = 0x00,
         NonGCStatic = 0x01,

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Internal.Runtime.Augments;
@@ -14,6 +15,8 @@ using Internal.Reflection.Execution;
 
 namespace Internal.Runtime.TypeLoader
 {
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public enum ModuleType
     {
         Eager,
@@ -25,6 +28,8 @@ namespace Internal.Runtime.TypeLoader
     /// This class represents basic information about a native binary module including its
     /// metadata.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public unsafe class ModuleInfo
     {
         /// <summary>
@@ -86,6 +91,8 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public class NativeFormatModuleInfo : ModuleInfo
     {
         /// <summary>
@@ -168,6 +175,8 @@ namespace Internal.Runtime.TypeLoader
     /// the module order so that a given explicitly specified module goes first - this is used
     /// as optimization in cases where a certain module is most likely to contain some metadata.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct ModuleInfoEnumerable
     {
         /// <summary>
@@ -204,6 +213,8 @@ namespace Internal.Runtime.TypeLoader
     /// This enumerator iterates the module map, possibly adjusting the order to make a given
     /// module go first in the enumeration.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct ModuleInfoEnumerator
     {
         /// <summary>
@@ -292,6 +303,8 @@ namespace Internal.Runtime.TypeLoader
     /// the module order so that a given explicitly specified module goes first - this is used
     /// as optimization in cases where a certain module is most likely to contain some metadata.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct NativeFormatModuleInfoEnumerable
     {
         /// <summary>
@@ -328,6 +341,8 @@ namespace Internal.Runtime.TypeLoader
     /// This enumerator iterates the module map, possibly adjusting the order to make a given
     /// module go first in the enumeration.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct NativeFormatModuleInfoEnumerator
     {
         /// <summary>
@@ -419,6 +434,8 @@ namespace Internal.Runtime.TypeLoader
     /// the module order so that a given explicitly specified module goes first - this is used
     /// as optimization in cases where a certain module is most likely to contain some metadata.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct ModuleHandleEnumerable
     {
         /// <summary>
@@ -455,6 +472,8 @@ namespace Internal.Runtime.TypeLoader
     /// Enumerator for module handles, optionally overriding module order with a given preferred
     /// module to be enumerated first.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct ModuleHandleEnumerator
     {
         /// <summary>
@@ -505,6 +524,8 @@ namespace Internal.Runtime.TypeLoader
     /// the module order so that a given explicitly specified module goes first - this is used
     /// as optimization in cases where a certain module is most likely to contain some metadata.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct MetadataReaderEnumerable
     {
         /// <summary>
@@ -541,6 +562,8 @@ namespace Internal.Runtime.TypeLoader
     /// Enumerator for metadata readers, optionally overriding module order with a given preferred
     /// module to be enumerated first.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct MetadataReaderEnumerator
     {
         /// <summary>
@@ -579,6 +602,8 @@ namespace Internal.Runtime.TypeLoader
     /// <summary>
     /// Utilities for manipulating module list and metadata readers.
     /// </summary>
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public sealed class ModuleList
     {
         /// <summary>
@@ -919,6 +944,7 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
+#if false
     public static partial class RuntimeSignatureHelper
     {
         public static ModuleInfo GetModuleInfo(this Internal.Runtime.CompilerServices.RuntimeSignature methodSignature)
@@ -938,4 +964,5 @@ namespace Internal.Runtime.TypeLoader
             }
         }
     }
+#endif
 }

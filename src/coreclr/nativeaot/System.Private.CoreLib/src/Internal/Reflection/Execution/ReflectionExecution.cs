@@ -37,7 +37,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace Internal.Reflection.Execution
 {
-    public static class ReflectionExecution
+    internal static class ReflectionExecution
     {
         /// <summary>
         /// Eager initialization of runtime reflection support. As part of ExecutionEnvironmentImplementation

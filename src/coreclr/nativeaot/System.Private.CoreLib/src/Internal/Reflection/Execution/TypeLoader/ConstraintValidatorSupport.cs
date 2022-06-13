@@ -171,7 +171,7 @@ namespace Internal.Reflection.Execution
             public override bool IsDefined(Type attributeType, bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override Guid GUID { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-            public override object InvokeMember(string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParameters) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            public override object? InvokeMember(string name, BindingFlags invokeAttr, Binder? binder, object? target, object?[]? args, ParameterModifier[]? modifiers, CultureInfo? culture, string[]? namedParameters) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override Module Module { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string Namespace { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string Name { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
@@ -186,13 +186,6 @@ namespace Internal.Reflection.Execution
             protected override bool IsCOMObjectImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
             protected override bool IsPrimitiveImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
             protected override bool HasElementTypeImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
-
-            internal const DynamicallyAccessedMemberTypes GetAllMembers = DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields |
-                DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods |
-                DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents |
-                DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties |
-                DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors |
-                DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes;
         }
 
         private static Type Instantiate(this Type type, SigTypeContext context)

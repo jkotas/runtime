@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 
 using Internal.Runtime.CompilerServices;
 using Internal.Metadata.NativeFormat;
@@ -31,6 +32,8 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
+    [ReflectionBlocked]
+    [CLSCompliant(false)]
     public struct MethodSignatureComparer
     {
         /// <summary>

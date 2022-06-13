@@ -51,7 +51,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        protected sealed override object Invoke(object thisObject, object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
+        protected sealed override object Invoke(object? thisObject, object?[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
         {
             ValidateThis(thisObject, _declaringTypeHandle);
 

@@ -5,7 +5,7 @@ using System;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 
-using Debug = System.Diagnostics.Debug;
+using Internal.Reflection.Execution;
 
 namespace Internal.Runtime.CompilerHelpers
 {
@@ -20,6 +20,8 @@ namespace Internal.Runtime.CompilerHelpers
             PreallocatedOutOfMemoryException.Initialize();
             ClassConstructorRunner.Initialize();
             TypeLoaderExports.Initialize();
+            ReflectionExecution.Initialize();
         }
     }
 }
+

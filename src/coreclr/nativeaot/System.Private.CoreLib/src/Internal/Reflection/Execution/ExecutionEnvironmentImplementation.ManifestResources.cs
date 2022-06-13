@@ -85,8 +85,7 @@ namespace Internal.Reflection.Execution
         {
             LowLevelDictionary<string, LowLevelList<ResourceInfo>> extractedResourceDictionary = ExtractedResourceDictionary;
             string assemblyName = assembly.GetName().FullName;
-            LowLevelList<ResourceInfo> resourceInfos;
-            if (!extractedResourceDictionary.TryGetValue(assemblyName, out resourceInfos))
+            if (!extractedResourceDictionary.TryGetValue(assemblyName, out LowLevelList<ResourceInfo>? resourceInfos))
                 return new LowLevelList<ResourceInfo>();
             return resourceInfos;
         }
@@ -123,8 +122,7 @@ namespace Internal.Reflection.Execution
 
                             ResourceInfo resourceInfo = new ResourceInfo(resourceName, resourceOffset, resourceLength, module);
 
-                            LowLevelList<ResourceInfo> assemblyResources;
-                            if (!dict.TryGetValue(assemblyName, out assemblyResources))
+                            if (!dict.TryGetValue(assemblyName, out LowLevelList<ResourceInfo>? assemblyResources))
                             {
                                 assemblyResources = new LowLevelList<ResourceInfo>();
                                 dict[assemblyName] = assemblyResources;

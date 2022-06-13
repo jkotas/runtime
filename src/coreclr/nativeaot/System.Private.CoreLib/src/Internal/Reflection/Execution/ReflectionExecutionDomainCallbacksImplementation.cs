@@ -31,7 +31,7 @@ namespace Internal.Reflection.Execution
             _executionEnvironment = executionEnvironment;
         }
 
-        public sealed override Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError, bool ignoreCase, string defaultAssemblyName)
+        public sealed override Type GetType(string typeName, Func<AssemblyName, Assembly?>? assemblyResolver, Func<Assembly, string, bool, Type?> typeResolver, bool throwOnError, bool ignoreCase, string defaultAssemblyName)
         {
             LowLevelListWithIList<string> defaultAssemblies = new LowLevelListWithIList<string>();
             if (defaultAssemblyName != null)

@@ -23,14 +23,11 @@ using global::Internal.NativeFormat;
 using System.Reflection.Runtime.General;
 using System.Threading;
 
-using CanonicalFormKind = global::Internal.TypeSystem.CanonicalFormKind;
-
-
 using Debug = System.Diagnostics.Debug;
+
 #if FEATURE_UNIVERSAL_GENERICS
 using ThunkKind = Internal.Runtime.TypeLoader.CallConverterThunk.ThunkKind;
 #endif
-using Interlocked = System.Threading.Interlocked;
 
 namespace Internal.Reflection.Execution
 {
@@ -368,29 +365,8 @@ namespace Internal.Reflection.Execution
 
             MethodSignatureComparer methodSignatureComparer = new MethodSignatureComparer(methodHandle);
 
-            MethodInvokeInfo methodInvokeInfo;
-#if GENERICS_FORCE_USG
-            // Stress mode to force the usage of universal canonical method targets for reflection invokes.
-            // It is recommended to use "/SharedGenericsMode GenerateAllUniversalGenerics" NUTC command line argument when
-            // compiling the application in order to effectively use the GENERICS_FORCE_USG mode.
-
-            // If we are just trying to invoke a non-generic method on a non-generic type, we won't force the universal lookup
-            if (!RuntimeAugments.IsGenericType(declaringTypeHandle) && (genericMethodTypeArgumentHandles == null || genericMethodTypeArgumentHandles.Length == 0))
-                methodInvokeInfo = TryGetMethodInvokeInfo(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
-                    methodInfo, ref methodSignatureComparer, CanonicalFormKind.Specific);
-            else
-                methodInvokeInfo = TryGetMethodInvokeInfo(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
-                    methodInfo, ref methodSignatureComparer, CanonicalFormKind.Universal);
-#else
-            methodInvokeInfo = TryGetMethodInvokeInfo(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
-                methodInfo, ref methodSignatureComparer, CanonicalFormKind.Specific);
-
-            // If we failed to get a MethodInvokeInfo for an exact method, or a canonically equivalent method, check if there is a universal canonically
-            // equivalent entry that could be used (it will be much slower, and require a calling convention converter)
-            if (methodInvokeInfo == null)
-                methodInvokeInfo = TryGetMethodInvokeInfo(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
-                    methodInfo, ref methodSignatureComparer, CanonicalFormKind.Universal);
-#endif
+            MethodInvokeInfo methodInvokeInfo = TryGetMethodInvokeInfo(declaringTypeHandle, methodHandle, genericMethodTypeArgumentHandles,
+                methodInfo, ref methodSignatureComparer);
 
             if (methodInvokeInfo == null)
                 return null;
@@ -501,7 +477,7 @@ namespace Internal.Reflection.Execution
             LowLevelList<RuntimeTypeHandle> dynamicInvokeMethodGenArguments = methodParamsInfo.ParameterTypeHandles;
 
             // This is either a constructor ("returns" void) or an instance method
-            MethodInfo reflectionMethodInfo = reflectionMethodBase as MethodInfo;
+            MethodInfo? reflectionMethodInfo = reflectionMethodBase as MethodInfo;
 
             // Only use the return type if it's not void
             if (reflectionMethodInfo != null && reflectionMethodInfo.ReturnType != typeof(void))
@@ -564,15 +540,13 @@ namespace Internal.Reflection.Execution
         /// <param name="genericMethodTypeArgumentHandles">Runtime handles of generic method arguments</param>
         /// <param name="methodInfo">MethodInfo of method to look up</param>
         /// <param name="methodSignatureComparer">Helper structure used for comparing signatures</param>
-        /// <param name="canonFormKind">Requested canon form</param>
         /// <returns>Constructed method invoke info, null on failure</returns>
         private unsafe MethodInvokeInfo TryGetMethodInvokeInfo(
             RuntimeTypeHandle declaringTypeHandle,
             QMethodDefinition methodHandle,
             RuntimeTypeHandle[] genericMethodTypeArgumentHandles,
             MethodBase methodInfo,
-            ref MethodSignatureComparer methodSignatureComparer,
-            CanonicalFormKind canonFormKind)
+            ref MethodSignatureComparer methodSignatureComparer)
         {
             MethodInvokeMetadata methodInvokeMetadata;
 
@@ -581,7 +555,6 @@ namespace Internal.Reflection.Execution
                 methodHandle,
                 genericMethodTypeArgumentHandles,
                 ref methodSignatureComparer,
-                canonFormKind,
                 out methodInvokeMetadata))
             {
                 // Method invoke info not found
@@ -598,7 +571,6 @@ namespace Internal.Reflection.Execution
             if ((methodInvokeMetadata.InvokeTableFlags & InvokeTableFlags.IsUniversalCanonicalEntry) != 0)
             {
                 // Wrap the method entry point in a calling convention converter thunk if it's a universal canonical implementation
-                Debug.Assert(canonFormKind == CanonicalFormKind.Universal);
                 methodInvokeMetadata.MethodEntryPoint = GetCallingConventionConverterForMethodEntrypoint(
                     methodHandle.NativeFormatReader,
                     declaringTypeHandle,
@@ -1524,10 +1496,10 @@ namespace Internal.Reflection.Execution
             {
                 get
                 {
-                    MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
+                    MethodInfo? reflectionMethodInfo = _methodBase as MethodInfo;
                     Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     if (returnType.IsByRef)
-                        returnType = returnType.GetElementType();
+                        returnType = returnType.GetElementType()!;
                     return returnType.TypeHandle;
                 }
             }
@@ -1549,7 +1521,7 @@ namespace Internal.Reflection.Execution
                     ParameterInfo[] parameters = _methodBase.GetParametersNoCopy();
                     bool[] result = new bool[parameters.Length + 1];
 
-                    MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
+                    MethodInfo? reflectionMethodInfo = _methodBase as MethodInfo;
                     Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     result[0] = returnType.IsByRef;
 
@@ -1562,9 +1534,7 @@ namespace Internal.Reflection.Execution
 
             public bool RequiresCallingConventionConverter(out bool[] forcedByRefParams)
             {
-                Handle[] handles = null;
-                Type[] types = null;
-                GetReturnTypeAndParameterTypesAndMDHandles(ref handles, ref types);
+                GetReturnTypeAndParameterTypesAndMDHandles(out Handle[] handles, out Type[]? types);
 
                 // Compute whether any of the parameters have generic vars in their signatures ...
                 bool requiresCallingConventionConverter = false;
@@ -1576,7 +1546,7 @@ namespace Internal.Reflection.Execution
                 return requiresCallingConventionConverter;
             }
 
-            private void GetReturnTypeAndParameterTypesAndMDHandles(ref Handle[] handles, ref Type[] types)
+            private void GetReturnTypeAndParameterTypesAndMDHandles(out Handle[] handles, out Type[] types)
             {
                 if (_returnTypeAndParametersTypesCache == null)
                 {
@@ -1588,7 +1558,7 @@ namespace Internal.Reflection.Execution
                     MethodSignature signature = _methodHandle.GetMethod(_metadataReader).Signature.GetMethodSignature(_metadataReader);
 
                     // Check the return type for generic vars
-                    MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
+                    MethodInfo? reflectionMethodInfo = _methodBase as MethodInfo;
                     _returnTypeAndParametersTypesCache[0] = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     _returnTypeAndParametersHandlesCache[0] = signature.ReturnType;
 
