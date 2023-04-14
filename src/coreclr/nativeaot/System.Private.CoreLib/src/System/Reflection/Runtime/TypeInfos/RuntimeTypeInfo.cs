@@ -33,31 +33,31 @@ namespace System.Reflection.Runtime.TypeInfos
     //     shows up as build error.
     //
     [DebuggerDisplay("{_debugName}")]
-    internal abstract partial class RuntimeTypeInfo : RuntimeType, ICloneable
+    internal abstract partial class RuntimeTypeInfo
     {
         protected RuntimeTypeInfo()
         {
         }
 
-        public abstract override bool IsTypeDefinition { get; }
-        public abstract override bool IsGenericTypeDefinition { get; }
-        protected abstract override bool HasElementTypeImpl();
-        protected abstract override bool IsArrayImpl();
-        public abstract override bool IsSZArray { get; }
-        public abstract override bool IsVariableBoundArray { get; }
-        protected abstract override bool IsByRefImpl();
-        protected abstract override bool IsPointerImpl();
-        public abstract override bool IsGenericParameter { get; }
-        public abstract override bool IsGenericTypeParameter { get; }
-        public abstract override bool IsGenericMethodParameter { get; }
-        public abstract override bool IsConstructedGenericType { get; }
-        public abstract override bool IsByRefLike { get; }
-        public sealed override bool IsCollectible => false;
-        public abstract override string Name { get; }
+        public abstract bool IsTypeDefinition { get; }
+        public abstract bool IsGenericTypeDefinition { get; }
+        protected abstract bool HasElementTypeImpl();
+        protected abstract bool IsArrayImpl();
+        public abstract bool IsSZArray { get; }
+        public abstract bool IsVariableBoundArray { get; }
+        protected abstract bool IsByRefImpl();
+        protected abstract bool IsPointerImpl();
+        public abstract bool IsGenericParameter { get; }
+        public abstract bool IsGenericTypeParameter { get; }
+        public abstract bool IsGenericMethodParameter { get; }
+        public abstract bool IsConstructedGenericType { get; }
+        public abstract bool IsByRefLike { get; }
+        public bool IsCollectible => false;
+        public abstract string Name { get; }
 
-        public abstract override Assembly Assembly { get; }
+        public abstract Assembly Assembly { get; }
 
-        public sealed override string AssemblyQualifiedName
+        public string AssemblyQualifiedName
         {
             get
             {
@@ -69,12 +69,12 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override Type AsType()
+        public Type AsType()
         {
             return this;
         }
 
-        public sealed override Type BaseType
+        public Type BaseType
         {
             get
             {
@@ -100,14 +100,14 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public abstract override bool ContainsGenericParameters { get; }
+        public abstract bool ContainsGenericParameters { get; }
 
-        public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
+        public abstract IEnumerable<CustomAttributeData> CustomAttributes { get; }
 
         //
         // Left unsealed as generic parameter types must override.
         //
-        public override MethodBase DeclaringMethod
+        public virtual MethodBase DeclaringMethod
         {
             get
             {
@@ -126,27 +126,27 @@ namespace System.Reflection.Runtime.TypeInfos
         // the instance hashcode to implement GetHashCode() (otherwise, the hash code will not be stable if the TypeInfo is released and recreated.)
         // Thus, we override and seal Equals() here but defer to a flavor-specific hash code implementation.
         //
-        public sealed override bool Equals(object obj)
+        public override bool Equals(object obj)
         {
             return object.ReferenceEquals(this, obj);
         }
 
-        public sealed override bool Equals(Type o)
+        public bool Equals(Type o)
         {
             return object.ReferenceEquals(this, o);
         }
 
-        public sealed override int GetHashCode()
+        public override int GetHashCode()
         {
             return InternalGetHashCode();
         }
 
-        public abstract override string FullName { get; }
+        public abstract string FullName { get; }
 
         //
         // Left unsealed as generic parameter types must override.
         //
-        public override GenericParameterAttributes GenericParameterAttributes
+        public virtual GenericParameterAttributes GenericParameterAttributes
         {
             get
             {
@@ -158,7 +158,7 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         // Left unsealed as generic parameter types must override this.
         //
-        public override int GenericParameterPosition
+        public virtual int GenericParameterPosition
         {
             get
             {
@@ -167,7 +167,7 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override Type[] GenericTypeArguments
+        public Type[] GenericTypeArguments
         {
             get
             {
@@ -182,13 +182,13 @@ namespace System.Reflection.Runtime.TypeInfos
                 | DynamicallyAccessedMemberTypes.PublicProperties
                 | DynamicallyAccessedMemberTypes.PublicConstructors
                 | DynamicallyAccessedMemberTypes.PublicNestedTypes)]
-        public sealed override MemberInfo[] GetDefaultMembers()
+        public MemberInfo[] GetDefaultMembers()
         {
             string? defaultMemberName = GetDefaultMemberName();
             return defaultMemberName != null ? GetMember(defaultMemberName) : Array.Empty<MemberInfo>();
         }
 
-        public sealed override InterfaceMapping GetInterfaceMap([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType)
+        public InterfaceMapping GetInterfaceMap([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType)
         {
             // restrictions and known limitations compared to CoreCLR:
             // - only interface.GetMethods() reflection visible interface methods are returned
@@ -230,7 +230,7 @@ namespace System.Reflection.Runtime.TypeInfos
         // Implements the correct GUID behavior for all "constructed" types (i.e. returning an all-zero GUID.) Left unsealed
         // so that RuntimeNamedTypeInfo can override.
         //
-        public override Guid GUID
+        public virtual Guid GUID
         {
             get
             {
@@ -238,9 +238,9 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public abstract override bool HasSameMetadataDefinitionAs(MemberInfo other);
+        public abstract bool HasSameMetadataDefinitionAs(MemberInfo other);
 
-        public sealed override IEnumerable<Type> ImplementedInterfaces
+        public IEnumerable<Type> ImplementedInterfaces
         {
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
             [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
@@ -292,9 +292,9 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override bool IsAssignableFrom(TypeInfo typeInfo) => IsAssignableFrom((Type)typeInfo);
+        public bool IsAssignableFrom(TypeInfo typeInfo) => IsAssignableFrom((Type)typeInfo);
 
-        public sealed override bool IsAssignableFrom(Type c)
+        public bool IsAssignableFrom(Type c)
         {
             if (c == null)
                 return false;
@@ -336,7 +336,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return Assignability.IsAssignableFrom(this, typeInfo);
         }
 
-        public sealed override bool IsEnum
+        public bool IsEnum
         {
             get
             {
@@ -344,7 +344,7 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override MemberTypes MemberType
+        public MemberTypes MemberType
         {
             get
             {
@@ -358,12 +358,12 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         // Left unsealed as there are so many subclasses. Need to be overridden by EcmaFormatRuntimeNamedTypeInfo and RuntimeConstructedGenericTypeInfo
         //
-        public abstract override int MetadataToken
+        public abstract int MetadataToken
         {
             get;
         }
 
-        public sealed override Module Module
+        public Module Module
         {
             get
             {
@@ -371,9 +371,9 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public abstract override string Namespace { get; }
+        public abstract string Namespace { get; }
 
-        public sealed override Type[] GenericTypeParameters
+        public Type[] GenericTypeParameters
         {
             get
             {
@@ -384,13 +384,13 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         // Left unsealed as array types must override this.
         //
-        public override int GetArrayRank()
+        public virtual int GetArrayRank()
         {
             Debug.Assert(!IsArray);
             throw new ArgumentException(SR.Argument_HasToBeArrayClass);
         }
 
-        public sealed override Type GetElementType()
+        public Type GetElementType()
         {
             return InternalRuntimeElementType;
         }
@@ -398,7 +398,7 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         // Left unsealed as generic parameter types must override.
         //
-        public override Type[] GetGenericParameterConstraints()
+        public virtual Type[] GetGenericParameterConstraints()
         {
             Debug.Assert(!IsGenericParameter);
             throw new InvalidOperationException(SR.Arg_NotGenericParameter);
@@ -407,14 +407,14 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         // Left unsealed as IsGenericType types must override this.
         //
-        public override Type GetGenericTypeDefinition()
+        public virtual Type GetGenericTypeDefinition()
         {
             Debug.Assert(!IsGenericType);
             throw new InvalidOperationException(SR.InvalidOperation_NotGenericType);
         }
 
         [RequiresDynamicCode("The code for an array of the specified type might not be available.")]
-        public sealed override Type MakeArrayType()
+        public Type MakeArrayType()
         {
             // Do not implement this as a call to MakeArrayType(1) - they are not interchangeable. MakeArrayType() returns a
             // vector type ("SZArray") while MakeArrayType(1) returns a multidim array of rank 1. These are distinct types
@@ -423,21 +423,21 @@ namespace System.Reflection.Runtime.TypeInfos
         }
 
         [RequiresDynamicCode("The code for an array of the specified type might not be available.")]
-        public sealed override Type MakeArrayType(int rank)
+        public Type MakeArrayType(int rank)
         {
             if (rank <= 0)
                 throw new IndexOutOfRangeException();
             return this.GetMultiDimArrayTypeWithTypeHandle(rank);
         }
 
-        public sealed override Type MakeByRefType()
+        public Type MakeByRefType()
         {
             return this.GetByRefType();
         }
 
         [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
-        public sealed override Type MakeGenericType(params Type[] typeArguments)
+        public Type MakeGenericType(params Type[] typeArguments)
         {
             ArgumentNullException.ThrowIfNull(typeArguments);
 
@@ -487,12 +487,12 @@ namespace System.Reflection.Runtime.TypeInfos
             return this.GetConstructedGenericTypeWithTypeHandle(runtimeTypeArguments!);
         }
 
-        public sealed override Type MakePointerType()
+        public Type MakePointerType()
         {
             return this.GetPointerType();
         }
 
-        public sealed override Type DeclaringType
+        public Type DeclaringType
         {
             get
             {
@@ -500,7 +500,7 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override Type ReflectedType
+        public Type ReflectedType
         {
             get
             {
@@ -510,11 +510,11 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public abstract override StructLayoutAttribute StructLayoutAttribute { get; }
+        public abstract StructLayoutAttribute StructLayoutAttribute { get; }
 
         public abstract override string ToString();
 
-        public sealed override RuntimeTypeHandle TypeHandle
+        public RuntimeTypeHandle TypeHandle
         {
             get
             {
@@ -538,7 +538,7 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        public sealed override Type UnderlyingSystemType
+        public Type UnderlyingSystemType
         {
             get
             {
@@ -546,26 +546,26 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
-        protected abstract override TypeAttributes GetAttributeFlagsImpl();
+        protected abstract TypeAttributes GetAttributeFlagsImpl();
 
-        protected sealed override TypeCode GetTypeCodeImpl()
+        protected TypeCode GetTypeCodeImpl()
         {
             return ReflectionAugments.GetRuntimeTypeCode(this);
         }
 
         protected abstract int InternalGetHashCode();
 
-        protected sealed override bool IsCOMObjectImpl()
+        protected bool IsCOMObjectImpl()
         {
             return false;
         }
 
-        protected sealed override bool IsPrimitiveImpl()
+        protected bool IsPrimitiveImpl()
         {
             return 0 != (Classification & TypeClassification.IsPrimitive);
         }
 
-        protected sealed override bool IsValueTypeImpl()
+        protected bool IsValueTypeImpl()
         {
             return 0 != (Classification & TypeClassification.IsValueType);
         }
@@ -851,11 +851,6 @@ namespace System.Reflection.Runtime.TypeInfos
             IsEnum = 0x00000004,
             IsPrimitive = 0x00000008,
             IsDelegate = 0x00000010,
-        }
-
-        object ICloneable.Clone()
-        {
-            return this;
         }
 
         private volatile TypeClassification _lazyClassification;
