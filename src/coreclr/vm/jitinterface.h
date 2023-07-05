@@ -444,13 +444,8 @@ public:
 
     bool resolveVirtualMethodHelper(CORINFO_DEVIRTUALIZATION_INFO * info);
 
-    CORINFO_CLASS_HANDLE getDefaultComparerClassHelper(
-        CORINFO_CLASS_HANDLE elemType
-        );
-
-    CORINFO_CLASS_HANDLE getDefaultEqualityComparerClassHelper(
-        CORINFO_CLASS_HANDLE elemType
-        );
+    static TypeHandle getDefaultComparerClassHelper(TypeHandle elemType);
+    static TypeHandle getDefaultEqualityComparerClassHelper(TypeHandle elemType);
 
     CorInfoType getFieldTypeInternal (CORINFO_FIELD_HANDLE field, CORINFO_CLASS_HANDLE* structType = NULL,CORINFO_CLASS_HANDLE owner = NULL);
 

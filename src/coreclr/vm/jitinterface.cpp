@@ -8757,6 +8757,56 @@ void CEEInfo::expandRawHandleIntrinsic(
 }
 
 /*********************************************************************/
+static TypeCompareState ImplementsInterfaceOfSelf(TypeHandle type, MethodTable* pInterface)
+{
+    STANDARD_VM_CONTRACT;
+
+    // We do not expect typedescs to show up here for valid IL.
+   _ASSERTE(!type.IsTypeDesc());
+   if (type.IsTypeDesc())
+       return TypeCompareState::May;
+
+    MethodTable* pMT = type.AsMethodTable();
+
+    // We cannot say anything definitive about Canon
+    if (pMT == g_pCanonMethodTableClass)
+        return TypeCompareState::May;
+
+    // Do a quick scan of interface map to avoid instantiating the interface unnecessarily
+    bool candidateFound = false;
+    MethodTable::InterfaceMapIterator it = pMT->IterateInterfaceMap();
+    while (it.Next())
+    {
+        if (it.HasSameTypeDefAs(pInterface))
+        {
+            candidateFound = true;
+            break;
+        }
+    }
+
+    if (!candidateFound)
+        return TypeCompareState::MustNot;
+
+    bool isShared = pMT->IsSharedByGenericInstantiations();
+
+    TypeHandle typeDefinition = TypeHandle(pMT);
+    if (isShared)
+    {
+        // Use generic type definition for shared types to properly reject cases like
+        // struct G<T, U> : IEquatable<G<U, T>>
+        typeDefinition = ClassLoader::LoadTypeDefThrowing(pMT->GetModule(),
+                                        pMT->GetCl(),
+                                        ClassLoader::ThrowIfNotFound,
+                                        ClassLoader::PermitUninstDefOrRef);
+    }
+
+    if (typeDefinition.CanCastTo(TypeHandle(pInterface).Instantiate(Instantiation(&typeDefinition, 1))))
+        return TypeCompareState::Must;
+
+    return isShared ? TypeCompareState::May : TypeCompareState::MustNot;
+}
+
+/*********************************************************************/
 CORINFO_CLASS_HANDLE CEEInfo::getDefaultComparerClass(CORINFO_CLASS_HANDLE elemType)
 {
     CONTRACTL {
@@ -8769,60 +8819,45 @@ CORINFO_CLASS_HANDLE CEEInfo::getDefaultComparerClass(CORINFO_CLASS_HANDLE elemT
 
     JIT_TO_EE_TRANSITION();
 
-    result = getDefaultComparerClassHelper(elemType);
+    result = CORINFO_CLASS_HANDLE(getDefaultComparerClassHelper(TypeHandle(elemType)).AsPtr());
 
     EE_TO_JIT_TRANSITION();
 
     return result;
 }
 
-CORINFO_CLASS_HANDLE CEEInfo::getDefaultComparerClassHelper(CORINFO_CLASS_HANDLE elemType)
+TypeHandle CEEInfo::getDefaultComparerClassHelper(TypeHandle elemTypeHnd)
 {
-    CONTRACTL {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_PREEMPTIVE;
-    } CONTRACTL_END;
-
-    TypeHandle elemTypeHnd(elemType);
+    STANDARD_VM_CONTRACT;
 
     // Mirrors the logic in BCL's CompareHelpers.CreateDefaultComparer
-    // And in compile.cpp's SpecializeComparer
-    //
-    // We need to find the appropriate instantiation
-    Instantiation inst(&elemTypeHnd, 1);
+
+    // If T implements IComparable<T>
+    switch (ImplementsInterfaceOfSelf(elemTypeHnd, CoreLibBinder::GetClass(CLASS__ICOMPARABLEGENERIC)))
+    {
+        case TypeCompareState::Must:
+            return TypeHandle(CoreLibBinder::GetClass(CLASS__GENERIC_COMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
+        case TypeCompareState::May:
+            return NULL;
+        default:
+            break;
+    }
 
     // Nullable<T>
     if (Nullable::IsNullableType(elemTypeHnd))
     {
         Instantiation nullableInst = elemTypeHnd.AsMethodTable()->GetInstantiation();
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__NULLABLE_COMPARER)).Instantiate(nullableInst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+        return TypeHandle(CoreLibBinder::GetClass(CLASS__NULLABLE_COMPARER)).Instantiate(nullableInst);
     }
 
     // We need to special case the Enum comparers based on their underlying type to avoid boxing
     if (elemTypeHnd.IsEnum())
     {
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__ENUM_COMPARER)).Instantiate(inst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
-    }
-
-    if (elemTypeHnd.IsCanonicalSubtype())
-    {
-        return NULL;
-    }
-
-    // If T implements IComparable<T>
-    if (elemTypeHnd.CanCastTo(TypeHandle(CoreLibBinder::GetClass(CLASS__ICOMPARABLEGENERIC)).Instantiate(inst)))
-    {
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__GENERIC_COMPARER)).Instantiate(inst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+        return TypeHandle(CoreLibBinder::GetClass(CLASS__ENUM_COMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
     }
 
     // Default case
-    TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__OBJECT_COMPARER)).Instantiate(inst);
-
-    return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+    return TypeHandle(CoreLibBinder::GetClass(CLASS__OBJECT_COMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
 }
 
 /*********************************************************************/
@@ -8838,37 +8873,35 @@ CORINFO_CLASS_HANDLE CEEInfo::getDefaultEqualityComparerClass(CORINFO_CLASS_HAND
 
     JIT_TO_EE_TRANSITION();
 
-    result = getDefaultEqualityComparerClassHelper(elemType);
+    result = CORINFO_CLASS_HANDLE(getDefaultEqualityComparerClassHelper(TypeHandle(elemType)).AsPtr());
 
     EE_TO_JIT_TRANSITION();
 
     return result;
 }
 
-CORINFO_CLASS_HANDLE CEEInfo::getDefaultEqualityComparerClassHelper(CORINFO_CLASS_HANDLE elemType)
+TypeHandle CEEInfo::getDefaultEqualityComparerClassHelper(TypeHandle elemTypeHnd)
 {
-    CONTRACTL {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_PREEMPTIVE;
-    } CONTRACTL_END;
+    STANDARD_VM_CONTRACT;
 
     // Mirrors the logic in BCL's CompareHelpers.CreateDefaultEqualityComparer
-    // And in compile.cpp's SpecializeEqualityComparer
-    TypeHandle elemTypeHnd(elemType);
 
-    // Mirrors the logic in BCL's CompareHelpers.CreateDefaultComparer
-    // And in compile.cpp's SpecializeComparer
-    //
-    // We need to find the appropriate instantiation
-    Instantiation inst(&elemTypeHnd, 1);
+    // If T implements IComparable<T>
+    switch (ImplementsInterfaceOfSelf(elemTypeHnd, CoreLibBinder::GetClass(CLASS__IEQUATABLEGENERIC)))
+    {
+        case TypeCompareState::Must:
+            return TypeHandle(CoreLibBinder::GetClass(CLASS__GENERIC_EQUALITYCOMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
+        case TypeCompareState::May:
+            return NULL;
+        default:
+            break;
+    }
 
     // Nullable<T>
     if (Nullable::IsNullableType(elemTypeHnd))
     {
         Instantiation nullableInst = elemTypeHnd.AsMethodTable()->GetInstantiation();
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__NULLABLE_EQUALITYCOMPARER)).Instantiate(nullableInst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+        return TypeHandle(CoreLibBinder::GetClass(CLASS__NULLABLE_EQUALITYCOMPARER)).Instantiate(nullableInst);
     }
 
     // Enum
@@ -8877,26 +8910,11 @@ CORINFO_CLASS_HANDLE CEEInfo::getDefaultEqualityComparerClassHelper(CORINFO_CLAS
     // to avoid boxing and call the correct versions of GetHashCode.
     if (elemTypeHnd.IsEnum())
     {
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__ENUM_EQUALITYCOMPARER)).Instantiate(inst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
-    }
-
-    if (elemTypeHnd.IsCanonicalSubtype())
-    {
-        return NULL;
-    }
-
-    // If T implements IEquatable<T>
-    if (elemTypeHnd.CanCastTo(TypeHandle(CoreLibBinder::GetClass(CLASS__IEQUATABLEGENERIC)).Instantiate(inst)))
-    {
-        TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__GENERIC_EQUALITYCOMPARER)).Instantiate(inst);
-        return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+        return TypeHandle(CoreLibBinder::GetClass(CLASS__ENUM_EQUALITYCOMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
     }
 
     // Default case
-    TypeHandle resultTh = ((TypeHandle)CoreLibBinder::GetClass(CLASS__OBJECT_EQUALITYCOMPARER)).Instantiate(inst);
-
-    return CORINFO_CLASS_HANDLE(resultTh.GetMethodTable());
+    return TypeHandle(CoreLibBinder::GetClass(CLASS__OBJECT_EQUALITYCOMPARER)).Instantiate(Instantiation(&elemTypeHnd, 1));
 }
 
 /*********************************************************************/
