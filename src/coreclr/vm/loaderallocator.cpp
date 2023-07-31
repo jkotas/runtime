@@ -1725,7 +1725,7 @@ AssemblyLoaderAllocator::~AssemblyLoaderAllocator()
     m_pShuffleThunkCache = NULL;
 }
 
-void AssemblyLoaderAllocator::RegisterBinder(CustomAssemblyBinder* binderToRelease)
+void AssemblyLoaderAllocator::RegisterBinder(AssemblyBinder* binderToRelease)
 {
     // When the binder is registered it will be released by the destructor
     // of this instance

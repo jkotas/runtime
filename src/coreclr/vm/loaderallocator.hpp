@@ -37,7 +37,7 @@ enum LoaderAllocatorType
 
 typedef SHash<PtrSetSHashTraits<LoaderAllocator *>> LoaderAllocatorSet;
 
-class CustomAssemblyBinder;
+class AssemblyBinder;
 
 
 // This implements the Add/Remove rangelist api on top of the CodeRangeMap in the code manager
@@ -898,12 +898,12 @@ public:
     virtual void RegisterHandleForCleanup(OBJECTHANDLE objHandle);
     virtual void UnregisterHandleFromCleanup(OBJECTHANDLE objHandle);
     virtual void CleanupHandles();
-    CustomAssemblyBinder* GetBinder()
+    AssemblyBinder* GetBinder()
     {
         return m_binderToRelease;
     }
     virtual ~AssemblyLoaderAllocator();
-    void RegisterBinder(CustomAssemblyBinder* binderToRelease);
+    void RegisterBinder(AssemblyBinder* binderToRelease);
     virtual void ReleaseManagedAssemblyLoadContext();
 #endif // !defined(DACCESS_COMPILE)
 
@@ -921,7 +921,7 @@ private:
 
     SList<HandleCleanupListItem> m_handleCleanupList;
 #if !defined(DACCESS_COMPILE)
-    CustomAssemblyBinder* m_binderToRelease;
+    AssemblyBinder* m_binderToRelease;
 #endif
 
 private:

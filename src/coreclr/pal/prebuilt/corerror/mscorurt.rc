@@ -293,7 +293,6 @@ BEGIN
 	MSG_FOR_URT_HR(PEFMT_E_32BIT) "File is PE32"
 	MSG_FOR_URT_HR(CLR_E_BIND_ASSEMBLY_VERSION_TOO_LOW) "The bound assembly has a version that is lower than that of the request."
 	MSG_FOR_URT_HR(CLR_E_BIND_ASSEMBLY_PUBLIC_KEY_MISMATCH) "The assembly version has a public key token that does not match that of the request."
-	MSG_FOR_URT_HR(CLR_E_BIND_IMAGE_UNAVAILABLE) "The requested image was not found or is unavailable."
 	MSG_FOR_URT_HR(CLR_E_BIND_UNRECOGNIZED_IDENTITY_FORMAT) "The provided identity format is not recognized."
 	MSG_FOR_URT_HR(CLR_E_BIND_ASSEMBLY_NOT_FOUND) "A binding for the specified assembly name was not found."
 	MSG_FOR_URT_HR(CLR_E_BIND_TYPE_NOT_FOUND) "A binding for the specified type name was not found."

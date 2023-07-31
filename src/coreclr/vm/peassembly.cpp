@@ -17,10 +17,7 @@
 #include "invokeutil.h"
 #include "strongnameinternal.h"
 
-#include "../binder/inc/applicationcontext.hpp"
-#include "../binder/inc/assemblybindercommon.hpp"
-
-#include "sha1.h"
+#include "assemblybinderutil.h"
 
 
 #ifndef DACCESS_COMPILE
@@ -119,6 +116,10 @@ BOOL PEAssembly::Equals(PEAssembly *pPEAssembly)
     if (pPEAssembly == this)
         return TRUE;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
+#if 0
     // Different host assemblies cannot be equal unless they are associated with the same host binder
     // It's ok if only one has a host binder because multiple threads can race to load the same assembly
     // and that may cause temporary candidate PEAssembly objects that never get bound to a host assembly
@@ -131,6 +132,7 @@ BOOL PEAssembly::Equals(PEAssembly *pPEAssembly)
         if (otherBinder != thisBinder || otherBinder == NULL)
             return FALSE;
     }
+#endif
 
     // Same image is equal
     if (m_PEImage != NULL && pPEAssembly->m_PEImage != NULL
@@ -653,17 +655,15 @@ ULONG PEAssembly::GetPEImageTimeDateStamp()
 #ifndef DACCESS_COMPILE
 
 PEAssembly::PEAssembly(
-                BINDER_SPACE::Assembly* pBindResultInfo,
+                AssemblyBinder* pBinder,
+                PEImage* pPEImageIL,
                 IMetaDataEmit* pEmit,
-                BOOL isSystem,
-                PEImage * pPEImage /*= NULL*/,
-                BINDER_SPACE::Assembly * pHostAssembly /*= NULL*/)
+                BOOL isSystem)
 {
     CONTRACTL
     {
         CONSTRUCTOR_CHECK;
-        PRECONDITION(CheckPointer(pEmit, NULL_OK));
-        PRECONDITION(pBindResultInfo == NULL || pPEImage == NULL);
+        PRECONDITION((pEmit == NULL) ^ (pPEImageIL == NULL));
         STANDARD_VM_CHECK;
     }
     CONTRACTL_END;
@@ -678,18 +678,17 @@ PEAssembly::PEAssembly(
     m_pEmitter = NULL;
     m_refCount = 1;
     m_isSystem = isSystem;
-    m_pHostAssembly = nullptr;
-    m_pFallbackBinder = nullptr;
+    m_pBinder = pBinder;
+    m_pDomainAssembly = NULL;
 
-    pPEImage = pBindResultInfo ? pBindResultInfo->GetPEImage() : pPEImage;
-    if (pPEImage)
+    if (pPEImageIL)
     {
-        _ASSERTE(pPEImage->CheckUniqueInstance());
-        pPEImage->AddRef();
+        _ASSERTE(pPEImageIL->CheckUniqueInstance());
+        pPEImageIL->AddRef();
         // We require an open layout for the file.
         // Most likely we have one already, just make sure we have one.
-        pPEImage->GetOrCreateLayout(PEImageLayout::LAYOUT_ANY);
-        m_PEImage = pPEImage;
+        pPEImageIL->GetOrCreateLayout(PEImageLayout::LAYOUT_ANY);
+        m_PEImage = pPEImageIL;
     }
 
     // Open metadata eagerly to minimize failure windows
@@ -716,45 +715,12 @@ PEAssembly::PEAssembly(
         ThrowHR(COR_E_BADIMAGEFORMAT, BFA_EMPTY_ASSEMDEF_NAME);
     }
 
-    // Set the host assembly and binding context as the AssemblySpec initialization
-    // for CoreCLR will expect to have it set.
-    if (pHostAssembly != nullptr)
-    {
-        m_pHostAssembly = clr::SafeAddRef(pHostAssembly);
-    }
-
-    if(pBindResultInfo != nullptr)
-    {
-        // Cannot have both pHostAssembly and a coreclr based bind
-        _ASSERTE(pHostAssembly == nullptr);
-        pBindResultInfo = clr::SafeAddRef(pBindResultInfo);
-        m_pHostAssembly = pBindResultInfo;
-    }
-
 #ifdef LOGGING
     GetPathOrCodeBase(m_debugName);
     m_pDebugName = m_debugName.GetUTF8();
 #endif // LOGGING
 }
 #endif // !DACCESS_COMPILE
-
-
-PEAssembly *PEAssembly::Open(
-    PEImage *          pPEImageIL,
-    BINDER_SPACE::Assembly * pHostAssembly)
-{
-    STANDARD_VM_CONTRACT;
-
-    PEAssembly * pPEAssembly = new PEAssembly(
-        nullptr,        // BindResult
-        nullptr,        // IMetaDataEmit
-        FALSE,          // isSystem
-        pPEImageIL,
-        pHostAssembly);
-
-    return pPEAssembly;
-}
-
 
 PEAssembly::~PEAssembly()
 {
@@ -789,38 +755,10 @@ PEAssembly::~PEAssembly()
 
     if (m_PEImage != NULL)
         m_PEImage->Release();
-
-    if (m_pHostAssembly != NULL)
-        m_pHostAssembly->Release();
 }
 
 /* static */
-PEAssembly *PEAssembly::OpenSystem()
-{
-    STANDARD_VM_CONTRACT;
-
-    PEAssembly *result = NULL;
-
-    EX_TRY
-    {
-        result = DoOpenSystem();
-    }
-    EX_HOOK
-    {
-        Exception *ex = GET_EXCEPTION();
-
-        // Rethrow non-transient exceptions as file load exceptions with proper
-        // context
-
-        if (!ex->IsTransient())
-            EEFileLoadException::Throw(SystemDomain::System()->BaseLibrary(), ex->GetHR(), ex);
-    }
-    EX_END_HOOK;
-    return result;
-}
-
-/* static */
-PEAssembly *PEAssembly::DoOpenSystem()
+PEAssembly* PEAssembly::OpenSystem()
 {
     CONTRACT(PEAssembly *)
     {
@@ -830,19 +768,41 @@ PEAssembly *PEAssembly::DoOpenSystem()
     CONTRACT_END;
 
     ETWOnStartup (FusionBinding_V1, FusionBindingEnd_V1);
-    ReleaseHolder<BINDER_SPACE::Assembly> pBoundAssembly;
-    IfFailThrow(GetAppDomain()->GetDefaultBinder()->BindToSystem(&pBoundAssembly));
 
-    RETURN new PEAssembly(pBoundAssembly, NULL, TRUE);
+    // System.Private.CoreLib.dll is expected to be found at one of the following locations:
+    //   * Non-single-file app: In systemDirectory, beside coreclr.dll
+    //   * Framework-dependent single-file app: In systemDirectory, beside coreclr.dll
+    //   * Self-contained single-file app: Within the single-file bundle.
+    //
+    //   CoreLib path (sCoreLib):
+    //   * Absolute path when looking for a file on disk
+    //   * Bundle-relative path when looking within the single-file bundle.
+
+    StackSString sCoreLibName(CoreLibName_IL_W);
+    StackSString sCoreLib;
+    // TODO:MANAGEDLOADER
+    // BinderTracing::PathSource pathSource = BinderTracing::PathSource::Bundle;
+    BundleFileLocation bundleFileLocation = Bundle::ProbeAppBundle(sCoreLibName, /*pathIsBundleRelative */ true);
+    if (!bundleFileLocation.IsValid())
+    {
+        // TODO:MANAGEDLOADER
+        // pathSource = BinderTracing::PathSource::ApplicationAssemblies;
+    }
+    sCoreLib.Set(SystemDomain::System()->SystemDirectory());
+    sCoreLib.Append(sCoreLibName);
+
+    PEImageHolder pImage = PEImage::OpenImage(sCoreLib, MDInternalImport_Default, bundleFileLocation);
+
+    // Make sure that the IL image can be opened.
+    HRESULT hr = pImage->TryOpenFile();
+    if (FAILED(hr))
+        EEFileLoadException::Throw(sCoreLib, hr);
+
+    RETURN new PEAssembly(GetAppDomain()->GetDefaultBinder(), pImage, NULL, /* isSystem */ TRUE);
 }
 
-PEAssembly* PEAssembly::Open(BINDER_SPACE::Assembly* pBindResult)
-{
-    return new PEAssembly(pBindResult,NULL,/*isSystem*/ false);
-};
-
 /* static */
-PEAssembly *PEAssembly::Create(IMetaDataAssemblyEmit *pAssemblyEmit)
+PEAssembly *PEAssembly::Create(AssemblyBinder* pFallbackBinder, IMetaDataAssemblyEmit *pAssemblyEmit)
 {
     CONTRACT(PEAssembly *)
     {
@@ -856,7 +816,7 @@ PEAssembly *PEAssembly::Create(IMetaDataAssemblyEmit *pAssemblyEmit)
     // we have.)
     SafeComHolder<IMetaDataEmit> pEmit;
     pAssemblyEmit->QueryInterface(IID_IMetaDataEmit, (void **)&pEmit);
-    RETURN new PEAssembly(NULL, pEmit, FALSE);
+    RETURN new PEAssembly(pFallbackBinder, NULL, pEmit);
 }
 
 #endif // #ifndef DACCESS_COMPILE
@@ -1088,29 +1048,3 @@ TADDR PEAssembly::GetMDInternalRWAddress()
     }
 }
 #endif
-
-// Returns the AssemblyBinder* instance associated with the PEAssembly
-PTR_AssemblyBinder PEAssembly::GetAssemblyBinder()
-{
-    LIMITED_METHOD_CONTRACT;
-
-    PTR_AssemblyBinder pBinder = NULL;
-
-    PTR_BINDER_SPACE_Assembly pHostAssembly = GetHostAssembly();
-    if (pHostAssembly)
-    {
-        pBinder = pHostAssembly->GetBinder();
-    }
-    else
-    {
-        // If we do not have a host assembly, check if we are dealing with
-        // a dynamically emitted assembly and if so, use its fallback load context
-        // binder reference.
-        if (IsDynamic())
-        {
-            pBinder = GetFallbackBinder();
-        }
-    }
-
-    return pBinder;
-}

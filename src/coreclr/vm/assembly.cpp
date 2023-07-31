@@ -442,10 +442,7 @@ Assembly *Assembly::CreateDynamic(AssemblyBinder* pBinder, NativeAssemblyNamePar
         IfFailThrow(pAssemblyEmit->DefineAssembly(pAssemblyNameParts->_pPublicKeyOrToken, pAssemblyNameParts->_cbPublicKeyOrToken, hashAlgorithm,
                                                    pAssemblyNameParts->_pName, &assemData, pAssemblyNameParts->_flags,
                                                    &ma));
-        pPEAssembly = PEAssembly::Create(pAssemblyEmit);
-
-        // Set it as the fallback load context binder for the dynamic assembly being created
-        pPEAssembly->SetFallbackBinder(pBinder);
+        pPEAssembly = PEAssembly::Create(pBinder, pAssemblyEmit);
     }
 
     AppDomain* pDomain = GetAppDomain();
@@ -456,11 +453,7 @@ Assembly *Assembly::CreateDynamic(AssemblyBinder* pBinder, NativeAssemblyNamePar
     {
         GCX_PREEMP();
 
-        AssemblyLoaderAllocator* pBinderLoaderAllocator = nullptr;
-        if (pBinder != nullptr)
-        {
-            pBinderLoaderAllocator = pBinder->GetLoaderAllocator();
-        }
+        AssemblyLoaderAllocator* pBinderLoaderAllocator = pBinder->GetLoaderAllocator();
 
         // Create a new LoaderAllocator if appropriate
         if ((access & ASSEMBLY_ACCESS_COLLECT) != 0)
@@ -478,14 +471,11 @@ Assembly *Assembly::CreateDynamic(AssemblyBinder* pBinder, NativeAssemblyNamePar
             pCollectibleLoaderAllocator->SetupManagedTracking(pKeepAlive);
             createdNewAssemblyLoaderAllocator = TRUE;
 
-            if(pBinderLoaderAllocator != nullptr)
-            {
-                pCollectibleLoaderAllocator->EnsureReference(pBinderLoaderAllocator);
-            }
+            pCollectibleLoaderAllocator->EnsureReference(pBinderLoaderAllocator);
         }
         else
         {
-            pLoaderAllocator = pBinderLoaderAllocator == nullptr ? pDomain->GetLoaderAllocator() : pBinderLoaderAllocator;
+            pLoaderAllocator = pBinderLoaderAllocator;
         }
 
         if (!createdNewAssemblyLoaderAllocator)

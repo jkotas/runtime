@@ -4,10 +4,25 @@
 #include "common.h"
 #include "assemblybinder.h"
 #include "nativeimage.h"
-#include "../binder/inc/assemblyname.hpp"
+
+AssemblyLoaderAllocator* AssemblyBinder::GetLoaderAllocator()
+{
+    TODO:MANAGEDLOADER
+    _ASSERTE(false);
+    return NULL; // !!!
+}
 
 #ifndef DACCESS_COMPILE
 
+void AssemblyBinder::SetupBindingPaths(LPCWSTR pwzTrustedPlatformAssemblies,
+                           LPCWSTR pwzPlatformResourceRoots,
+                           LPCWSTR pwzAppPaths)
+{
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+}
+
+#if 0
 HRESULT AssemblyBinder::BindAssemblyByName(AssemblyNameData* pAssemblyNameData,
     BINDER_SPACE::Assembly** ppAssembly)
 {
@@ -25,7 +40,7 @@ HRESULT AssemblyBinder::BindAssemblyByName(AssemblyNameData* pAssemblyNameData,
 Exit:
     return hr;
 }
-
+#endif
 
 NativeImage* AssemblyBinder::LoadNativeImage(Module* componentModule, LPCUTF8 nativeImageName)
 {
@@ -164,6 +179,12 @@ void AssemblyBinder::AddLoadedAssembly(Assembly* loadedAssembly)
 #ifdef FEATURE_READYTORUN
     DeclareLoadedAssembly(loadedAssembly);
 #endif // FEATURE_READYTORUN
+}
+
+void AssemblyBinder::ReleaseLoadContext()
+{
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
 }
 
 void AssemblyBinder::GetNameForDiagnosticsFromManagedALC(INT_PTR managedALC, /* out */ SString& alcName)

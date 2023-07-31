@@ -22,11 +22,11 @@
 #include "strongnameholders.h"
 
 #include "../binder/inc/assemblyidentity.hpp"
-#include "../binder/inc/assembly.hpp"
-#include "../binder/inc/assemblyname.hpp"
+// #include "../binder/inc/assembly.hpp"
+// #include "../binder/inc/assemblyname.hpp"
 
-#include "../binder/inc/assemblybindercommon.hpp"
-#include "../binder/inc/applicationcontext.hpp"
+// #include "../binder/inc/assemblybindercommon.hpp"
+// #include "../binder/inc/applicationcontext.hpp"
 
 HRESULT  AssemblySpec::Bind(AppDomain *pAppDomain, BINDER_SPACE::Assembly** ppAssembly)
 {
@@ -42,10 +42,13 @@ HRESULT  AssemblySpec::Bind(AppDomain *pAppDomain, BINDER_SPACE::Assembly** ppAs
 
     HRESULT hr=S_OK;
 
+    // TODO:MANAGEDLOADER
+    _ASSERTE(false);
+
     // Have a default binding context setup
     AssemblyBinder *pBinder = GetBinderFromParentAssembly(pAppDomain);
 
-    ReleaseHolder<BINDER_SPACE::Assembly> pPrivAsm;
+    // ReleaseHolder<BINDER_SPACE::Assembly> pPrivAsm;
     _ASSERTE(pBinder != NULL);
 
     if (IsCoreLibSatellite())
@@ -58,86 +61,21 @@ HRESULT  AssemblySpec::Bind(AppDomain *pAppDomain, BINDER_SPACE::Assembly** ppAs
         if (m_context.szLocale != NULL)
             SString(SString::Utf8Literal, m_context.szLocale).ConvertToUnicode(sCultureName);
 
-        hr = BINDER_SPACE::AssemblyBinderCommon::BindToSystemSatellite(sSystemDirectory, sSimpleName, sCultureName, &pPrivAsm);
+        // hr = BINDER_SPACE::AssemblyBinderCommon::BindToSystemSatellite(sSystemDirectory, sSimpleName, sCultureName, &pPrivAsm);
     }
     else
     {
         AssemblyNameData assemblyNameData = { 0 };
         PopulateAssemblyNameData(assemblyNameData);
-        hr = pBinder->BindAssemblyByName(&assemblyNameData, &pPrivAsm);
+        // hr = pBinder->BindAssemblyByName(&assemblyNameData, &pPrivAsm);
     }
 
     if (SUCCEEDED(hr))
     {
-        _ASSERTE(pPrivAsm != nullptr);
-        *ppAssembly = pPrivAsm.Extract();
+        // _ASSERTE(pPrivAsm != nullptr);
+        // *ppAssembly = pPrivAsm.Extract();
     }
 
-    return hr;
-}
-
-
-STDAPI BinderAcquirePEImage(LPCWSTR             wszAssemblyPath,
-                            PEImage           **ppPEImage,
-                            BundleFileLocation  bundleFileLocation)
-{
-    HRESULT hr = S_OK;
-
-    _ASSERTE(ppPEImage != NULL);
-
-    EX_TRY
-    {
-        PEImageHolder pImage = PEImage::OpenImage(wszAssemblyPath, MDInternalImport_Default, bundleFileLocation);
-
-        // Make sure that the IL image can be opened.
-        hr=pImage->TryOpenFile();
-        if (FAILED(hr))
-        {
-            goto Exit;
-        }
-
-        if (pImage)
-            *ppPEImage = pImage.Extract();
-    }
-    EX_CATCH_HRESULT(hr);
-
- Exit:
-    return hr;
-}
-
-STDAPI BinderAcquireImport(PEImage                  *pPEImage,
-                           IMDInternalImport       **ppIAssemblyMetaDataImport,
-                           DWORD                    *pdwPAFlags)
-{
-    HRESULT hr = S_OK;
-
-    _ASSERTE(pPEImage != NULL);
-    _ASSERTE(ppIAssemblyMetaDataImport != NULL);
-    _ASSERTE(pdwPAFlags != NULL);
-
-    EX_TRY
-    {
-        PEImageLayout* pLayout = pPEImage->GetOrCreateLayout(PEImageLayout::LAYOUT_ANY);
-
-        // CheckCorHeader includes check of NT headers too
-        if (!pLayout->CheckCorHeader())
-            IfFailGo(COR_E_ASSEMBLYEXPECTED);
-
-        if (!pLayout->CheckFormat())
-            IfFailGo(COR_E_BADIMAGEFORMAT);
-
-        pPEImage->GetPEKindAndMachine(&pdwPAFlags[0], &pdwPAFlags[1]);
-
-        *ppIAssemblyMetaDataImport = pPEImage->GetMDImport();
-        if (!*ppIAssemblyMetaDataImport)
-        {
-            IfFailGo(COR_E_BADIMAGEFORMAT);
-        }
-        else
-            (*ppIAssemblyMetaDataImport)->AddRef();
-    }
-    EX_CATCH_HRESULT(hr);
-ErrExit:
     return hr;
 }
 
@@ -304,6 +242,8 @@ void BaseAssemblySpec::InitializeWithAssemblyIdentity(BINDER_SPACE::AssemblyIden
 
 namespace
 {
+    // TODO:MANAGEDLOADER
+    // TODO: Broken. Delete!
     PEKIND GetProcessorArchitectureFromAssemblyFlags(DWORD flags)
     {
         if (flags & afPA_MSIL)

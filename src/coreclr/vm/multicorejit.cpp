@@ -889,8 +889,6 @@ void MulticoreJitRecorder::RecordMethodJitOrLoad(MethodDesc * pMethod, bool appl
 }
 
 
-// Called from AppDomain::RaiseAssemblyResolveEvent, make it simple
-
 void MulticoreJitRecorder::AbortProfile()
 {
     LIMITED_METHOD_CONTRACT;

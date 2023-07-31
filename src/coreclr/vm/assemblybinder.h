@@ -5,7 +5,6 @@
 #define _ASSEMBLYBINDER_H
 
 #include <sarray.h>
-#include "../binder/inc/applicationcontext.hpp"
 
 class PEImage;
 class NativeImage;
@@ -16,26 +15,34 @@ class AssemblySpec;
 
 class AssemblyBinder
 {
-public:
+    bool m_fDefault;
 
-    HRESULT BindAssemblyByName(AssemblyNameData* pAssemblyNameData, BINDER_SPACE::Assembly** ppAssembly);
-    virtual HRESULT BindUsingPEImage(PEImage* pPEImage, bool excludeAppPaths, BINDER_SPACE::Assembly** ppAssembly) = 0;
-    virtual HRESULT BindUsingAssemblyName(BINDER_SPACE::AssemblyName* pAssemblyName, BINDER_SPACE::Assembly** ppAssembly) = 0;
+public:
+    AssemblyBinder(bool fDefault = false)
+        : m_fDefault(fDefault)
+    {
+    }
+
+    // HRESULT BindAssemblyByName(AssemblyNameData* pAssemblyNameData, BINDER_SPACE::Assembly** ppAssembly);
+    // HRESULT BindUsingPEImage(PEImage* pPEImage, BINDER_SPACE::Assembly** ppAssembly);
+    // HRESULT BindUsingAssemblyName(BINDER_SPACE::AssemblyName* pAssemblyName, BINDER_SPACE::Assembly** ppAssembly);
 
     /// <summary>
     /// Get LoaderAllocator for binders that contain it. For other binders, return NULL.
     /// </summary>
-    virtual AssemblyLoaderAllocator* GetLoaderAllocator() = 0;
+    AssemblyLoaderAllocator* GetLoaderAllocator();
 
     /// <summary>
     /// Tells if the binder is a default binder (not a custom one)
     /// </summary>
-    virtual bool IsDefault() = 0;
-
-    inline BINDER_SPACE::ApplicationContext* GetAppContext()
+    bool IsDefault()
     {
-        return &m_appContext;
+        return m_fDefault;
     }
+
+    void SetupBindingPaths(LPCWSTR pwzTrustedPlatformAssemblies,
+                           LPCWSTR pwzPlatformResourceRoots,
+                           LPCWSTR pwzAppPaths);
 
     INT_PTR GetManagedAssemblyLoadContext()
     {
@@ -49,6 +56,8 @@ public:
 
     NativeImage* LoadNativeImage(Module* componentModule, LPCUTF8 nativeImageName);
     void AddLoadedAssembly(Assembly* loadedAssembly);
+
+    void ReleaseLoadContext();
 
     void GetNameForDiagnostics(/*out*/ SString& alcName);
 
@@ -120,8 +129,6 @@ private:
 
     SHash<SimpleNameWithMvidHashTraits> m_assemblySimpleNameMvidCheckHash;
 #endif // FEATURE_READYTORUN
-
-    BINDER_SPACE::ApplicationContext m_appContext;
 
     // A GC handle to the managed AssemblyLoadContext.
     // It is a long weak handle for collectible AssemblyLoadContexts and strong handle for non-collectible ones.
