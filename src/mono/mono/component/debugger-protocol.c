@@ -1,10 +1,6 @@
 #include "debugger-protocol.h"
 
-#ifdef DBI_COMPONENT_MONO
-#include "debugger-coreclr-compat.h"
-#else
 #include "debugger-mono-compat.h"
-#endif
 
 static int32_t packet_id = 0;
 
