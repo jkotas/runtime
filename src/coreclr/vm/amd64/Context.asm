@@ -15,7 +15,7 @@ CONTEXT_CONTROL equ 1h
 CONTEXT_INTEGER equ 2h
 CONTEXT_FLOATING_POINT equ 8h
 
-; Signature: EXTERN_C void STDCALL ClrRestoreNonvolatileContextWorker(PCONTEXT ContextRecord, DWORD64 ssp);
+; Signature: EXTERN_C void ClrRestoreNonvolatileContextWorker(PCONTEXT ContextRecord, DWORD64 ssp);
 NESTED_ENTRY ClrRestoreNonvolatileContextWorker, _TEXT
         push_nonvol_reg rbp
         set_frame rbp, 0

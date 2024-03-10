@@ -396,11 +396,7 @@ VOID DECLSPEC_NORETURN RealCOMPlusThrowInvalidCastException(TypeHandle thCastFro
 VOID DECLSPEC_NORETURN RealCOMPlusThrowInvalidCastException(OBJECTREF *pObj, TypeHandle thCastTo);
 
 
-#ifndef FEATURE_EH_FUNCLETS
-
-#include "eexcp.h"
-#include "exinfo.h"
-
+#if defined(TARGET_WINDOWS) && defined(TARGET_X86)
 struct FrameHandlerExRecord
 {
     EXCEPTION_REGISTRATION_RECORD   m_ExReg;
@@ -413,6 +409,11 @@ struct FrameHandlerExRecord
         return m_pEntryFrame;
     }
 };
+#endif // TARGET_WINDOWS && TARGET_X86
+
+#if !defined(FEATURE_EH_FUNCLETS)
+#include "eexcp.h"
+#include "exinfo.h"
 
 struct NestedHandlerExRecord : public FrameHandlerExRecord
 {
@@ -434,8 +435,7 @@ struct NestedHandlerExRecord : public FrameHandlerExRecord
         m_ActiveForUnwind = FALSE;
     }
 };
-
-#endif // !FEATURE_EH_FUNCLETS
+#endif
 
 #if defined(ENABLE_CONTRACTS_IMPL)
 
@@ -509,6 +509,15 @@ BOOL        IsThreadHijackedForThreadStop(Thread* pThread, EXCEPTION_RECORD* pEx
 void        AdjustContextForThreadStop(Thread* pThread, T_CONTEXT* pContext);
 OBJECTREF   CreateCOMPlusExceptionObject(Thread* pThread, EXCEPTION_RECORD* pExceptionRecord, BOOL bAsynchronousThreadStop);
 
+#if defined(TARGET_WINDOWS) && defined(TARGET_X86)
+// Pop off any SEH handlers we have registered below pTargetSP
+VOID PopSEHRecords(LPVOID pTargetSP);
+
+// Misc functions to access and update the SEH chain. Be very, very careful about updating the SEH chain.
+PEXCEPTION_REGISTRATION_RECORD GetCurrentSEHRecord();
+VOID SetCurrentSEHRecord(EXCEPTION_REGISTRATION_RECORD *pSEH);
+#endif
+
 #if !defined(FEATURE_EH_FUNCLETS)
 EXCEPTION_HANDLER_DECL(COMPlusFrameHandler);
 EXCEPTION_HANDLER_DECL(COMPlusNestedExceptionHandler);
@@ -516,22 +525,12 @@ EXCEPTION_HANDLER_DECL(COMPlusNestedExceptionHandler);
 EXCEPTION_HANDLER_DECL(COMPlusFrameHandlerRevCom);
 #endif // FEATURE_COMINTEROP
 
-// Pop off any SEH handlers we have registered below pTargetSP
-VOID PopSEHRecords(LPVOID pTargetSP);
-
 #ifdef DEBUGGING_SUPPORTED
 VOID UnwindExceptionTrackerAndResumeInInterceptionFrame(ExInfo* pExInfo, EHContext* context);
 #endif // DEBUGGING_SUPPORTED
 
 BOOL PopNestedExceptionRecords(LPVOID pTargetSP, BOOL bCheckForUnknownHandlers = FALSE);
 VOID PopNestedExceptionRecords(LPVOID pTargetSP, T_CONTEXT *pCtx, void *pSEH);
-
-// Misc functions to access and update the SEH chain. Be very, very careful about updating the SEH chain.
-// Frankly, if you think you need to use one of these function, please
-// consult with the owner of the exception system.
-PEXCEPTION_REGISTRATION_RECORD GetCurrentSEHRecord();
-VOID SetCurrentSEHRecord(EXCEPTION_REGISTRATION_RECORD *pSEH);
-
 
 #define STACK_OVERWRITE_BARRIER_SIZE 20
 #define STACK_OVERWRITE_BARRIER_VALUE 0xabcdefab

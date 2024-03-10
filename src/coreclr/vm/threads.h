@@ -5784,9 +5784,6 @@ private:
 };
 
 #ifndef DACCESS_COMPILE
-#if defined(TARGET_WINDOWS) && defined(TARGET_AMD64)
-EXTERN_C void STDCALL ClrRestoreNonvolatileContextWorker(PCONTEXT ContextRecord, DWORD64 ssp);
-#endif
 void ClrRestoreNonvolatileContext(PCONTEXT ContextRecord);
 #endif // DACCESS_COMPILE
 

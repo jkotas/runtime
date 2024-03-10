@@ -4023,7 +4023,7 @@ FuncEvalHijackPersonalityRoutine(IN     PEXCEPTION_RECORD   pExceptionRecord,
 #endif
 
     DebuggerEval* pDE = *(DebuggerEval**)(pDispatcherContext->EstablisherFrame - debuggerEvalPtrOffset);
-    FixupDispatcherContext(pDispatcherContext, &(pDE->m_context));
+    // !!! FixupDispatcherContext(pDispatcherContext, &(pDE->m_context));
 
     // Returning ExceptionCollidedUnwind will cause the OS to take our new context record and
     // dispatcher context and restart the exception dispatching on this call frame, which is

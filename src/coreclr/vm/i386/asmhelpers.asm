@@ -272,6 +272,7 @@ CallRtlUnwind PROC stdcall public USES ebx esi edi, pEstablisherFrame :DWORD, ca
         RET
 CallRtlUnwind ENDP
 
+ifndef FEATURE_EH_FUNCLETS
 _ResumeAtJitEHHelper@4 PROC public
         ; Call ___asan_handle_no_return here as we are not going to return.
 ifdef HAS_ADDRESS_SANITIZER
@@ -393,6 +394,7 @@ endif
         pop     ebp ; don't use 'leave' here, as ebp as been trashed
         retn    8
 _CallJitEHFinallyHelper@8 ENDP
+endif
 
 ;-----------------------------------------------------------------------
 ; The out-of-line portion of the code to enable preemptive GC.
@@ -1471,5 +1473,92 @@ _OnCallCountThresholdReachedStub@0 proc public
 _OnCallCountThresholdReachedStub@0 endp
 
 endif ; FEATURE_TIERED_COMPILATION
+
+
+
+; DWORD_PTR STDCALL CallEHFunclet(Object *pThrowable, UINT_PTR pFuncletToInvoke, UINT_PTR *pFirstNonVolReg, UINT_PTR *pFuncletCallerSP);
+; ESP based frame
+_CallEHFunclet@16 proc public
+
+    push ebp
+    push ebx
+    push esi
+    push edi
+
+    lea     ebp, [esp + 3*4]
+
+    ; On entry:
+    ;
+    ; [ebp+ 8] = throwable
+    ; [ebp+12] = PC to invoke
+    ; [ebp+16] = address of EDI register in CONTEXT record ; used to restore the non-volatile registers of CrawlFrame
+    ; [ebp+20] = address of the location where the SP of funclet's caller (i.e. this helper) should be saved.
+    ;
+
+    ; Save the SP of this function
+    mov     eax, [ebp + 20]
+    mov     [eax], esp
+    ; Save the funclet PC for later call
+    mov     edx, [ebp + 12]
+    ; Pass throwable object to funclet
+    mov     eax, [ebp +  8]
+    ; Restore non-volatiles registers
+    mov     ecx, [ebp + 16]
+    mov     edi, [ecx]
+    mov     esi, [ecx +  4]
+    mov     ebx, [ecx +  8]
+    mov     ebp, [ecx + 24]
+    ; Invoke the funclet
+    call    edx
+
+    pop edi
+    pop esi
+    pop ebx
+    pop ebp
+
+    ret     16
+
+_CallEHFunclet@16 endp
+
+; DWORD_PTR STDCALL CallEHFilterFunclet(Object *pThrowable, TADDR CallerSP, UINT_PTR pFuncletToInvoke, UINT_PTR *pFuncletCallerSP);
+; ESP based frame
+_CallEHFilterFunclet@16 proc public
+
+    push ebp
+    push ebx
+    push esi
+    push edi
+
+    lea     ebp, [esp + 3*4]
+
+    ; On entry:
+    ;
+    ; [ebp+ 8] = throwable
+    ; [ebp+12] = FP to restore
+    ; [ebp+16] = PC to invoke
+    ; [ebp+20] = address of the location where the SP of funclet's caller (i.e. this helper) should be saved.
+    ;
+
+    ; Save the SP of this function
+    mov     eax, [ebp + 20]
+    mov     [eax], esp
+    ; Save the funclet PC for later call
+    mov     edx, [ebp + 16]
+    ; Pass throwable object to funclet
+    mov     eax, [ebp +  8]
+    ; Restore FP
+    mov     ebp, [ebp + 12]
+    ; Invoke the funclet
+    call    edx
+
+    pop edi
+    pop esi
+    pop ebx
+    pop ebp
+
+    ret     16
+
+_CallEHFilterFunclet@16 endp
+
 
     end

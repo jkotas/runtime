@@ -193,8 +193,17 @@ typedef struct _RUNTIME_FUNCTION {
 
 typedef struct _DISPATCHER_CONTEXT {
     _EXCEPTION_REGISTRATION_RECORD* RegistrationPointer;
-} DISPATCHER_CONTEXT, *PDISPATCHER_CONTEXT;
 
+    // TODO:!!!
+    DWORD EstablisherFrame;
+    DWORD ControlPc;
+    DWORD ImageBase;
+    PRUNTIME_FUNCTION FunctionEntry;
+    PCONTEXT ContextRecord;
+    PKNONVOLATILE_CONTEXT CurrentNonVolatileContextRecord;
+    PEXCEPTION_ROUTINE LanguageHandler;
+    BOOLEAN ControlPcIsUnwound;
+} DISPATCHER_CONTEXT, *PDISPATCHER_CONTEXT;
 #endif // HOST_X86
 #endif // !HOST_UNIX
 

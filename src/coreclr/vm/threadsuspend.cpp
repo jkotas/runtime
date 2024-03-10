@@ -3927,18 +3927,18 @@ ThrowControlForThread(
             STRESS_LOG0(LF_SYNC, LL_INFO100, "ThrowControlForThread resume\n");
             pThread->ResetThrowControlForThread();
             // Thread abort is not allowed at this point
-#ifndef FEATURE_EH_FUNCLETS
-            __try{
-                RaiseException(BOOTUP_EXCEPTION_COMPLUS,0,0,NULL);
-            }
-            __except(RedirectedThrowControlExceptionFilter(GetExceptionInformation()))
+#if defined(TARGET_WINDOWS) && defined(TARGET_X86)
+            // __try{
+            //    RaiseException(BOOTUP_EXCEPTION_COMPLUS,0,0,NULL);
+            // }
+            // __except(RedirectedThrowControlExceptionFilter(GetExceptionInformation()))
             {
                 _ASSERTE(!"Should not reach here");
             }
-#else // FEATURE_EH_FUNCLETS
+#else
             __asan_handle_no_return();
             RtlRestoreContext(pThread->m_OSContext, NULL);
-#endif // !FEATURE_EH_FUNCLETS
+#endif
             _ASSERTE(!"Should not reach here");
         }
         pThread->SetThrowControlForThread(Thread::InducedThreadStop);
@@ -5025,7 +5025,7 @@ StackWalkAction SWCB_GetExecutionState(CrawlFrame *pCF, VOID *pData)
             STRESS_LOG2(LF_SYNC, LL_INFO1000, "Partially Int case hijack address = 0x%x val = 0x%x\n", pES->m_ppvRetAddrPtr, *pES->m_ppvRetAddrPtr);
         }
 #else
-        PORTABILITY_ASSERT("Platform NYI");
+        // PORTABILITY_ASSERT("Platform NYI");
 #endif
     }
 

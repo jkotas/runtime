@@ -11,7 +11,7 @@
 #define CONTEXT_CONTROL 1
 #define CONTEXT_INTEGER 2
 
-// Signature: EXTERN_C void STDCALL ClrRestoreNonvolatileContextWorker(PCONTEXT ContextRecord, DWORD64 ssp);
+// Signature: EXTERN_C void ClrRestoreNonvolatileContextWorker(PCONTEXT ContextRecord, DWORD64 ssp);
 NESTED_ENTRY ClrRestoreNonvolatileContextWorker, _TEXT, NoHandler
         push_nonvol_reg rbp
         set_cfa_register rbp, 0

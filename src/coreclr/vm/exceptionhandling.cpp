@@ -5881,10 +5881,12 @@ void FixupDispatcherContext(DISPATCHER_CONTEXT* pDispatcherContext, CONTEXT* pCo
     INDEBUG(pDispatcherContext->FunctionEntry = (PT_RUNTIME_FUNCTION)INVALID_POINTER_CD);
     INDEBUG(pDispatcherContext->ImageBase     = INVALID_POINTER_CD);
 
+    #if 0 // !!!!!!!!!!!!!!!!
     pDispatcherContext->FunctionEntry = RtlLookupFunctionEntry(pDispatcherContext->ControlPc,
                                                                &(pDispatcherContext->ImageBase),
                                                                NULL
                                                                );
+    #endif
 
     _ASSERTE(((PT_RUNTIME_FUNCTION)INVALID_POINTER_CD) != pDispatcherContext->FunctionEntry);
     _ASSERTE(INVALID_POINTER_CD != pDispatcherContext->ImageBase);
@@ -5893,10 +5895,11 @@ void FixupDispatcherContext(DISPATCHER_CONTEXT* pDispatcherContext, CONTEXT* pCo
     // need to find the establisher frame by virtually unwinding
     //
     CONTEXT tempContext;
-    PVOID   HandlerData;
+    // PVOID   HandlerData;
 
     CopyOSContext(&tempContext, pDispatcherContext->ContextRecord);
 
+    #if 0 // !!!
     // RtlVirtualUnwind returns the language specific handler for the ControlPC in question
     // on ARM and AMD64.
     pDispatcherContext->LanguageHandler = RtlVirtualUnwind(
@@ -5911,6 +5914,7 @@ void FixupDispatcherContext(DISPATCHER_CONTEXT* pDispatcherContext, CONTEXT* pCo
 
     pDispatcherContext->HandlerData     = NULL;
     pDispatcherContext->HistoryTable    = NULL;
+    #endif
 
 
     // Why does the OS consider it invalid to have a NULL personality routine (or, why does
@@ -5975,7 +5979,7 @@ BOOL FirstCallToHandler (
     }
     CONTRACTL_END;
 
-    FaultingExceptionFrame *pFrame = GetFrameFromRedirectedStubStackFrame(pDispatcherContext);
+    FaultingExceptionFrame *pFrame = NULL; // !!! GetFrameFromRedirectedStubStackFrame(pDispatcherContext);
 
     BOOL *pfFilterExecuted = pFrame->GetFilterExecutedFlag();
     BOOL fFilterExecuted   = *pfFilterExecuted;
@@ -6254,9 +6258,9 @@ UMThunkStubUnwindFrameChainHandler(
     // and we can landup here even when thread creation (within the thunk) fails.
     if (GetThreadNULLOk() != NULL)
     {
-        SetReversePInvokeEscapingUnhandledExceptionStatus(IS_UNWINDING(pExceptionRecord->ExceptionFlags),
-            pEstablisherFrame
-            );
+//        SetReversePInvokeEscapingUnhandledExceptionStatus(IS_UNWINDING(pExceptionRecord->ExceptionFlags),
+//            pEstablisherFrame
+//            );
     }
 #endif // _DEBUG
 
@@ -8571,3 +8575,8 @@ namespace AsmOffsetsAsserts
 #endif
 
 #endif // FEATURE_EH_FUNCLETS
+
+#ifdef TARGET_X86
+// TODO!!!!
+size_t CallDescrWorkerInternalReturnAddressOffset = 0;
+#endif

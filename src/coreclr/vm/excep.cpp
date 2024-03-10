@@ -6806,7 +6806,7 @@ VEH_ACTION WINAPI CLRVectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo
     }
 #endif
 
-    // We need to unhijack the thread here if it is not unhijacked already.  On x86 systems,
+    // We need to unhijack the thread here if it is not unhijacked already.  On x86 systems, ????
     // we do this in Thread::StackWalkFramesEx, but on amd64 systems we have the OS walk the
     // stack for us.  If we leave CLRVectoredExceptionHandler with a thread still hijacked,
     // the operating system will not be able to walk the stack and not find the handlers for
