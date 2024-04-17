@@ -14243,10 +14243,13 @@ HRESULT gc_heap::initialize_gc (size_t soh_segment_size,
 
 #endif //MULTIPLE_HEAPS
 
+    // Start with low conservative spin count that will be bumped up by spin count recalibration in the background.
+    yp_spin_count_unit = 10;
+
 #ifdef MULTIPLE_HEAPS
-    yp_spin_count_unit = 32 * number_of_heaps;
+    original_spin_count_unit = 32 * number_of_heaps;
 #else
-    yp_spin_count_unit = 32 * g_num_processors;
+    original_spin_count_unit = 32 * g_num_processors;
 #endif //MULTIPLE_HEAPS
 
     // Check if the values are valid for the spin count if provided by the user
@@ -14255,10 +14258,8 @@ HRESULT gc_heap::initialize_gc (size_t soh_segment_size,
     gc_heap::spin_count_unit_config_p = (spin_count_unit_from_config > 0) && (spin_count_unit_from_config <= MAX_YP_SPIN_COUNT_UNIT);
     if (gc_heap::spin_count_unit_config_p)
     {
-        yp_spin_count_unit = static_cast<int32_t>(spin_count_unit_from_config);
+        yp_spin_count_unit = original_spin_count_unit = static_cast<int32_t>(spin_count_unit_from_config);
     }
-
-    original_spin_count_unit = yp_spin_count_unit;
 
 #if defined(__linux__)
     GCToEEInterface::UpdateGCEventStatus(static_cast<int>(GCEventStatus::GetEnabledLevel(GCEventProvider_Default)),
