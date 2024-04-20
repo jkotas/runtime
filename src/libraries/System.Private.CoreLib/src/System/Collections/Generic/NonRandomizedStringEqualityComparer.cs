@@ -20,8 +20,6 @@ namespace System.Collections.Generic
         // GetUnderlyingEqualityComparer method can return the correct value.
 
         private static readonly NonRandomizedStringEqualityComparer WrappedAroundDefaultComparer = new OrdinalComparer(EqualityComparer<string?>.Default);
-        private static readonly NonRandomizedStringEqualityComparer WrappedAroundStringComparerOrdinal = new OrdinalComparer(StringComparer.Ordinal);
-        private static readonly NonRandomizedStringEqualityComparer WrappedAroundStringComparerOrdinalIgnoreCase = new OrdinalIgnoreCaseComparer(StringComparer.OrdinalIgnoreCase);
 
         private readonly IEqualityComparer<string?> _underlyingComparer;
 
@@ -75,6 +73,8 @@ namespace System.Collections.Generic
 
         private sealed class OrdinalComparer : NonRandomizedStringEqualityComparer
         {
+            internal static readonly OrdinalComparer WrappedAroundComparer = new OrdinalComparer(StringComparer.Ordinal);
+
             internal OrdinalComparer(IEqualityComparer<string?> wrappedComparer)
                 : base(wrappedComparer)
             {
@@ -92,6 +92,8 @@ namespace System.Collections.Generic
 
         private sealed class OrdinalIgnoreCaseComparer : NonRandomizedStringEqualityComparer
         {
+            internal static readonly OrdinalIgnoreCaseComparer WrappedAroundComparer = new OrdinalIgnoreCaseComparer(StringComparer.OrdinalIgnoreCase);
+
             internal OrdinalIgnoreCaseComparer(IEqualityComparer<string?> wrappedComparer)
                 : base(wrappedComparer)
             {
@@ -124,12 +126,12 @@ namespace System.Collections.Generic
 
             if (ReferenceEquals(comparer, StringComparer.Ordinal))
             {
-                return WrappedAroundStringComparerOrdinal;
+                return OrdinalComparer.WrappedAroundComparer;
             }
 
             if (ReferenceEquals(comparer, StringComparer.OrdinalIgnoreCase))
             {
-                return WrappedAroundStringComparerOrdinalIgnoreCase;
+                return OrdinalIgnoreCaseComparer.WrappedAroundComparer;
             }
 
             return null;
