@@ -12,6 +12,18 @@
 #include "clrnt.h"
 #include "contract.h"
 
+#ifdef DACCESS_COMPILE
+
+extern TADDR g_ClrModuleBase; // Initialized by ClrDataAccess::Initialize
+TADDR g_ClrModuleBase;
+
+void* GetClrModuleBase()
+{
+    return (void*)g_ClrModuleBase;
+}
+
+#else // DACCESS_COMPILE
+
 #if HOST_WINDOWS
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #else
@@ -36,6 +48,8 @@ void* GetClrModuleBase()
     return pRet;
 #endif // HOST_WINDOWS
 }
+
+#endif // DACCESS_COMPILE
 
 thread_local int t_CantAllocCount;
 
