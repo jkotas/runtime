@@ -348,26 +348,6 @@ public:
             return h;
         }
     };
-
-    // The lifetime management between managed and native Thread objects is broken. There is a resurrection
-    // race where one can get a dangling pointer to the unmanaged Thread object. Once this race is fixed
-    // we may need to revisit how the unmanaged thread handles are passed around.
-    struct ThreadHandle
-    {
-        Thread * m_pThread;
-
-        operator Thread * ()
-        {
-            LIMITED_METHOD_CONTRACT;
-            return m_pThread;
-        }
-
-        Thread * operator->() const
-        {
-            LIMITED_METHOD_CONTRACT;
-            return m_pThread;
-        }
-    };
 };
 
 typedef void* EnregisteredTypeHandle;

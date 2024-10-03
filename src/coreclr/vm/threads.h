@@ -1656,19 +1656,6 @@ public:
         return m_ExposedObject;
     }
 
-    // Query whether the exposed object exists
-    BOOL IsExposedObjectSet()
-    {
-        CONTRACTL
-        {
-            NOTHROW;
-            GC_NOTRIGGER;
-            MODE_COOPERATIVE;
-        }
-        CONTRACTL_END;
-        return (ObjectFromHandle(m_ExposedObject) != NULL) ;
-    }
-
     void GetSynchronizationContext(OBJECTREF *pSyncContextObj)
     {
         CONTRACTL

@@ -239,8 +239,6 @@ extern "C" void QCALLTYPE ThreadNative_Start(QCall::ThreadHandle thread, int thr
     }
 #endif
 
-    pNewThread->IncExternalCount();
-
     // Fire an ETW event to mark the current thread as the launcher of the new thread
     if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_DOTNET_Context, ThreadCreating))
         FireEtwThreadCreating(pNewThread, GetClrInstanceId());
@@ -255,7 +253,6 @@ extern "C" void QCALLTYPE ThreadNative_Start(QCall::ThreadHandle thread, int thr
 
     if (!success)
     {
-        pNewThread->DecExternalCount(FALSE);
         COMPlusThrowOM();
     }
 
@@ -270,6 +267,8 @@ extern "C" void QCALLTYPE ThreadNative_Start(QCall::ThreadHandle thread, int thr
     pNewThread->SetThreadState(Thread::TS_LegalToJoin);
     if (isThreadPool)
         pNewThread->SetIsThreadPoolThread();
+
+    pNewThread->IncExternalCount();
 
     DWORD ret = pNewThread->StartThread();
 
@@ -322,7 +321,7 @@ extern "C" void QCALLTYPE ThreadNative_SetPriority(QCall::ObjectHandleOnStack th
     // of a thread that has died.
     Thread* th = threadRef->GetInternal();
     if (ThreadIsDead(th))
-        COMPlusThrow(kThreadStateException, W("ThreadState_Dead_Priority"));
+        COMPlusThrow(kThreadStateException, W("ThreadState_Dead"));
 
     // translate the priority (validating as well)
     INT32 priority = MapToNTPriority(iPriority);
@@ -469,7 +468,7 @@ extern "C" INT32 QCALLTYPE ThreadNative_GetApartmentState(QCall::ObjectHandleOnS
         thread = threadRef->GetInternal();
 
         if (ThreadIsDead(thread))
-            COMPlusThrow(kThreadStateException, W("ThreadState_Dead_State"));
+            COMPlusThrow(kThreadStateException, W("ThreadState_Dead"));
     }
 
     retVal = thread->GetApartment();
@@ -539,27 +538,16 @@ extern "C" INT32 QCALLTYPE ThreadNative_SetApartmentState(QCall::ObjectHandleOnS
 }
 #endif // FEATURE_COMINTEROP_APARTMENT_SUPPORT
 
-void ReleaseThreadExternalCount(Thread * pThread)
-{
-    WRAPPER_NO_CONTRACT;
-    pThread->DecExternalCount(FALSE);
-}
-
-typedef Holder<Thread *, DoNothing, ReleaseThreadExternalCount> ThreadExternalCountHolder;
-
 // Wait for the thread to die
-static BOOL DoJoin(THREADBASEREF dyingThread, INT32 timeout)
+extern "C" BOOL QCALLTYPE ThreadNative_Join(QCall::ObjectHandleOnStack thread, INT32 Timeout)
 {
-    CONTRACTL
-    {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_COOPERATIVE;
-        PRECONDITION(dyingThread != NULL);
-        PRECONDITION((timeout >= 0) || (timeout == INFINITE_TIMEOUT));
-    }
-    CONTRACTL_END;
+    QCALL_CONTRACT;
 
+    BOOL retVal = FALSE;
+
+    BEGIN_QCALL;
+
+    !!!
     Thread* DyingInternal = dyingThread->GetInternal();
 
     // Validate the handle.  It's valid to Join a thread that's not running -- so
@@ -574,22 +562,6 @@ static BOOL DoJoin(THREADBASEREF dyingThread, INT32 timeout)
     // condition.
     if (ThreadIsDead(DyingInternal) || !DyingInternal->HasValidThreadHandle())
         return TRUE;
-
-    // There is a race here. The Thread is going to close its thread handle.
-    // If we grab the handle and then the Thread closes it, we will wait forever
-    // in DoAppropriateWait.
-    int RefCount = DyingInternal->IncExternalCount();
-    if (RefCount == 1)
-    {
-        // !!! We resurrect the Thread Object.
-        // !!! We will keep the Thread ref count to be 1 so that we will not try
-        // !!! to destroy the Thread Object again.
-        // !!! Do not call DecExternalCount here!
-        _ASSERTE (!DyingInternal->HasValidThreadHandle());
-        return TRUE;
-    }
-
-    ThreadExternalCountHolder dyingInternalHolder(DyingInternal);
 
     if (!DyingInternal->HasValidThreadHandle())
     {
@@ -620,21 +592,9 @@ static BOOL DoJoin(THREADBASEREF dyingThread, INT32 timeout)
             break;
     }
 
-    return FALSE;
-}
+    retVal = false;
 
-extern "C" BOOL QCALLTYPE ThreadNative_Join(QCall::ObjectHandleOnStack thread, INT32 Timeout)
-{
-    QCALL_CONTRACT;
-
-    BOOL retVal = FALSE;
-
-    BEGIN_QCALL;
-
-    GCX_COOP();
-    retVal = DoJoin((THREADBASEREF)thread.Get(), Timeout);
-
-    END_QCALL;
+}   END_QCALL;
 
     return retVal;
 }

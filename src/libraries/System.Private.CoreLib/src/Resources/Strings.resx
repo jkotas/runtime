@@ -4076,11 +4076,8 @@
   <data name="ThreadState_NotStarted" xml:space="preserve">
     <value>Thread has not been started.</value>
   </data>
-  <data name="ThreadState_Dead_Priority" xml:space="preserve">
-    <value>Thread is dead; priority cannot be accessed.</value>
-  </data>
-  <data name="ThreadState_Dead_State" xml:space="preserve">
-    <value>Thread is dead; state cannot be accessed.</value>
+ <data name="ThreadState_Dead" xml:space="preserve">
+    <value>Thread is dead.</value>
   </data>
   <data name="ThreadState_SetPriorityFailed" xml:space="preserve">
     <value>Unable to set thread priority.</value>

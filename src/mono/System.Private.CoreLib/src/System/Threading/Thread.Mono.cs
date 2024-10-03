@@ -265,7 +265,7 @@ namespace System.Threading
         {
             ThreadState state = GetState(this);
             if ((state & ThreadState.Stopped) != 0)
-                throw new ThreadStateException(SR.ThreadState_Dead_State);
+                throw new ThreadStateException(SR.ThreadState_Dead);
             return state;
         }
 

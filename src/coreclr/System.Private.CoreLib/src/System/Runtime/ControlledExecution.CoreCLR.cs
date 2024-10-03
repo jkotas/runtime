@@ -119,7 +119,7 @@ namespace System.Runtime
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Abort")]
-        private static partial void AbortThread(ThreadHandle thread);
+        private static partial void AbortThread(IntPtr thread);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_ResetAbort")]
         [SuppressGCTransition]
@@ -141,8 +141,11 @@ namespace System.Runtime
             {
                 try
                 {
-                    // Abort the thread executing the action (which may be the current thread).
-                    AbortThread(_thread.GetNativeHandle());
+                    using (Thread.InternalThreadHolder internalThread = _thread.GetInternalThread())
+                    {
+                        // Abort the thread executing the action (which may be the current thread).
+                        AbortThread(internalThread.Value);
+                    }
                 }
                 finally
                 {

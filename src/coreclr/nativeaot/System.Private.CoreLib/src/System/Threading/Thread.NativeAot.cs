@@ -121,7 +121,7 @@ namespace System.Threading
             }
         }
 
-        private bool IsDead()
+        private bool IsDead
         {
             return ((ThreadState)_threadState & (ThreadState.Stopped | ThreadState.Aborted)) != 0;
         }
@@ -130,17 +130,17 @@ namespace System.Threading
         {
             get
             {
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 return GetThreadStateBit(ThreadState.Background);
             }
             set
             {
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 // we changing foreground count only for started threads
                 // on thread start we count its state in `StartThread`
@@ -170,17 +170,17 @@ namespace System.Threading
         {
             get
             {
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 return GetThreadStateBit(ThreadPoolThread);
             }
             internal set
             {
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 if (value)
                 {
@@ -217,9 +217,9 @@ namespace System.Threading
         {
             get
             {
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_Priority);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 if (!HasStarted())
                 {
@@ -237,9 +237,9 @@ namespace System.Threading
                 {
                     throw new ArgumentOutOfRangeException(SR.Argument_InvalidFlag);
                 }
-                if (IsDead())
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_Priority);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
 
                 // Prevent race condition with starting this thread

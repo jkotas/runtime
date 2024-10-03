@@ -10,16 +10,6 @@ using System.Runtime.Versioning;
 
 namespace System.Threading
 {
-    internal readonly struct ThreadHandle
-    {
-        private readonly IntPtr _ptr;
-
-        internal ThreadHandle(IntPtr pThread)
-        {
-            _ptr = pThread;
-        }
-    }
-
     public sealed partial class Thread
     {
         /*=========================================================================
@@ -44,13 +34,18 @@ namespace System.Threading
         // fields on 64-bit platforms, where they will be sorted together.
 
         private IntPtr _DONT_USE_InternalThread; // Pointer
-        private int _priority; // INT32
+
+        // Number of active thread-local references of InternalThread.
+        // The highest bit of the ref-count (DeadThreadRefCountFlag) is used to indicates dead thread.
+        private int _refCount;
+
+        private int _priority;
 
         // The following field is required for interop with the VS Debugger
         // Prior to making any changes to this field, please reach out to the VS Debugger
         // team to make sure that your changes are not going to prevent the debugger
         // from working.
-        private int _managedThreadId; // INT32
+        private int _managedThreadId;
 #pragma warning restore CA1823, 169
 
         // This is used for a quick check on thread pool threads after running a work item to determine if the name, background
@@ -58,11 +53,32 @@ namespace System.Threading
         // but those types of changes may race with the reset anyway, so this field doesn't need to be synchronized.
         private bool _mayNeedResetForThreadPool;
 
-        // Set in unmanaged and read in managed code.
-        private bool _isDead;
         private bool _isThreadPool;
 
         private Thread() { }
+
+        // Flag used to indicate a dead thread
+        private const int DeadThreadRefCountFlag = int.MinValue;
+
+        private bool IsDead => _refCount < 0; // Same as (_refCount & DeadThreadRefCountFlag) != 0;
+
+        internal readonly struct InternalThreadHolder : IDisposable
+        {
+            private readonly Thread? _thread;
+            private readonly IntPtr _value;
+
+            internal InternalThreadHolder(Thread thread, IntPtr value)
+            {
+                _thread = thread;
+                _value = value;
+            }
+
+            public bool IsDead => _thread == null;
+
+            public IntPtr Value => _value;
+
+            public void Dispose() => _thread?.ReleaseInternalThread();
+        }
 
         public int ManagedThreadId
         {
@@ -70,33 +86,41 @@ namespace System.Threading
             get => _managedThreadId;
         }
 
-        /// <summary>Returns handle for interop with EE. The handle is guaranteed to be non-null.</summary>
-        internal ThreadHandle GetNativeHandle()
+        /// <summary>Returns handle with guaranteed lifetime for interop with EE. This handle may be null if the thread is dead.</summary>
+        internal InternalThreadHolder GetInternalThread(bool throwOnDeadThread = true)
         {
-            IntPtr thread = _DONT_USE_InternalThread;
+            IntPtr value = _DONT_USE_InternalThread;
 
-            // This should never happen under normal circumstances.
-            if (thread == IntPtr.Zero)
+            while (true)
             {
-                throw new ThreadStateException(SR.Argument_InvalidHandle);
+                int refCount = Volatile.Read(ref _refCount);
+                if (refCount < 0) // Same as (refCount & DeadThreadRefCountFlag) != 0
+                {
+                     return throwOnDeadThread ? throw new ThreadStateException(SR.ThreadState_Dead) : default;
+                }
+                if (Interlocked.CompareExchange(ref _refCount, checked(refCount + 1), refCount) == refCount)
+                {
+                    return new InternalThreadHolder(this, value);
+                }
             }
-
-            return new ThreadHandle(thread);
         }
 
         private unsafe void StartCore()
         {
             lock (this)
             {
-                fixed (char* pThreadName = _name)
+                using (InternalThreadHolder internalThread = GetInternalThread())
                 {
-                    StartInternal(GetNativeHandle(), _startHelper?._maxStackSize ?? 0, _priority, _isThreadPool ? Interop.BOOL.TRUE : Interop.BOOL.FALSE, pThreadName);
+                    fixed (char* pThreadName = _name)
+                    {
+                        StartInternal(internalThread.Value, _startHelper?._maxStackSize ?? 0, _priority, _isThreadPool ? Interop.BOOL.TRUE : Interop.BOOL.FALSE, pThreadName);
+                    }
                 }
             }
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Start")]
-        private static unsafe partial void StartInternal(ThreadHandle t, int stackSize, int priority, Interop.BOOL isThreadPool, char* pThreadName);
+        private static unsafe partial void StartInternal(IntPtr internalThread, int stackSize, int priority, Interop.BOOL isThreadPool, char* pThreadName);
 
         // Called from the runtime
         private void StartCallback()
@@ -107,6 +131,20 @@ namespace System.Threading
 
             startHelper.Run();
         }
+
+        private void ReleaseInternalThread()
+        {
+            int newRefCount = Interlocked.Decrement(ref _refCount);
+
+            // The thread that reaches ref-count of zero is responsible for disposing the native thread
+            if (newRefCount == DeadThreadRefCountFlag)
+            {
+                ThreadNative_Destroy(_DONT_USE_InternalThread);
+            }
+        }
+
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Destroy")]
+        private static unsafe partial void ThreadNative_Destroy(IntPtr internalThread);
 
         /// <summary>
         /// Suspends the current thread for timeout milliseconds. If timeout == 0,
@@ -172,19 +210,30 @@ namespace System.Threading
         private static partial void Initialize(ObjectHandleOnStack thread);
 
         /// <summary>Clean up the thread when it goes away.</summary>
-        ~Thread() => InternalFinalize(); // Delegate to the unmanaged portion.
+        ~Thread()
+        {
+            using (InternalThreadHolder internalThread = GetInternalThread(throwOnDeadThread: false))
+            {
+                if (internalThread.IsDead)
+                    return;
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern void InternalFinalize();
+                Interlocked.Or(ref _refCount, DeadThreadRefCountFlag);
+            }
+        }
 
         private void ThreadNameChanged(string? value)
         {
-            InformThreadNameChange(GetNativeHandle(), value, value?.Length ?? 0);
-            GC.KeepAlive(this);
+            using (InternalThreadHolder internalThread = GetInternalThread(throwOnDeadThread: false))
+            {
+                if (internalThread.IsDead)
+                    return;
+
+                InformThreadNameChange(internalThread.Value, value, value?.Length ?? 0);
+            }
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_InformThreadNameChange", StringMarshalling = StringMarshalling.Utf16)]
-        private static partial void InformThreadNameChange(ThreadHandle t, string? name, int len);
+        private static partial void InformThreadNameChange(IntPtr internalThread, string? name, int len);
 
         /// <summary>Returns true if the thread has been started and is not dead.</summary>
         public bool IsAlive => (ThreadState & (ThreadState.Unstarted | ThreadState.Stopped | ThreadState.Aborted)) == 0;
@@ -197,46 +246,40 @@ namespace System.Threading
         {
             get
             {
-                if (_isDead)
+                using (InternalThreadHolder internalThread = GetInternalThread())
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    return GetIsBackground(internalThread.Value) != Interop.BOOL.FALSE;
                 }
-
-                Interop.BOOL res = GetIsBackground(GetNativeHandle());
-                GC.KeepAlive(this);
-                return res != Interop.BOOL.FALSE;
             }
             set
             {
-                if (_isDead)
+                using (InternalThreadHolder internalThread = GetInternalThread())
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
-                }
+                    SetIsBackground(internalThread.Value, value ? Interop.BOOL.TRUE : Interop.BOOL.FALSE);
 
-                SetIsBackground(GetNativeHandle(), value ? Interop.BOOL.TRUE : Interop.BOOL.FALSE);
-                GC.KeepAlive(this);
-                if (!value)
-                {
-                    _mayNeedResetForThreadPool = true;
+                    if (!value)
+                    {
+                        _mayNeedResetForThreadPool = true;
+                    }
                 }
             }
         }
 
         [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetIsBackground")]
-        private static partial Interop.BOOL GetIsBackground(ThreadHandle t);
+        private static partial Interop.BOOL GetIsBackground(IntPtr internalThread);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_SetIsBackground")]
-        private static partial void SetIsBackground(ThreadHandle t, Interop.BOOL value);
+        private static partial void SetIsBackground(IntPtr internalThread, Interop.BOOL value);
 
         /// <summary>Returns true if the thread is a threadpool thread.</summary>
         public bool IsThreadPoolThread
         {
             get
             {
-                if (_isDead)
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_State);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
 
                 return _isThreadPool;
@@ -244,7 +287,7 @@ namespace System.Threading
             internal set
             {
                 Debug.Assert(value);
-                Debug.Assert(!_isDead);
+                Debug.Assert(!IsDead);
                 Debug.Assert(((ThreadState & ThreadState.Unstarted) != 0)
 #if TARGET_WINDOWS
                     || ThreadPool.UseWindowsThreadPool
@@ -256,24 +299,26 @@ namespace System.Threading
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_SetPriority")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static partial void SetPriority(ObjectHandleOnStack thread, int priority);
+        private static partial void SetPriority(IntPtr internalThread, int priority);
 
         /// <summary>Returns the priority of the thread.</summary>
         public ThreadPriority Priority
         {
             get
             {
-                if (_isDead)
+                if (IsDead)
                 {
-                    throw new ThreadStateException(SR.ThreadState_Dead_Priority);
+                    throw new ThreadStateException(SR.ThreadState_Dead);
                 }
                 return (ThreadPriority)_priority;
             }
             set
             {
-                Thread _this = this;
-                SetPriority(ObjectHandleOnStack.Create(ref _this), (int)value);
-                _mayNeedResetForThreadPool = true;
+                using (InternalThreadHolder internalThread = GetInternalThread())
+                {
+                    SetPriority(internalThread.Value, (int)value);
+                    _mayNeedResetForThreadPool = true;
+                }
             }
         }
 
@@ -288,15 +333,16 @@ namespace System.Threading
         {
             get
             {
-                var state = (ThreadState)GetThreadState(GetNativeHandle());
-                GC.KeepAlive(this);
-                return state;
+                using (InternalThreadHolder internalThread = GetInternalThread(throwOnDeadThread: false))
+                {
+                    return internalThread.IsDead ? ThreadState.Stopped : (ThreadState)GetThreadState(internalThread.Value);
+               }
             }
         }
 
         [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetThreadState")]
-        private static partial int GetThreadState(ThreadHandle t);
+        private static partial int GetThreadState(IntPtr internalThread);
 
         /// <summary>
         /// An unstarted thread can be marked to indicate that it will host a
@@ -304,15 +350,17 @@ namespace System.Threading
         /// </summary>
 #if FEATURE_COMINTEROP_APARTMENT_SUPPORT
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetApartmentState")]
-        private static partial int GetApartmentState(ObjectHandleOnStack t);
+        private static partial int GetApartmentState(IntPtr internalThread);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_SetApartmentState")]
-        private static partial int SetApartmentState(ObjectHandleOnStack t, int state);
+        private static partial int SetApartmentState(IntPtr internalThread, int state);
 
         public ApartmentState GetApartmentState()
         {
-            Thread _this = this;
-            return (ApartmentState)GetApartmentState(ObjectHandleOnStack.Create(ref _this));
+            using (InternalThreadHolder internalThread = GetInternalThread())
+            {
+                return (ApartmentState)GetApartmentState(internalThread.Value);
+            }
         }
 
         private bool SetApartmentStateUnchecked(ApartmentState state, bool throwOnError)
@@ -320,8 +368,10 @@ namespace System.Threading
             ApartmentState retState;
             lock (this) // This lock is only needed when the this is not the current thread.
             {
-                Thread _this = this;
-                retState = (ApartmentState)SetApartmentState(ObjectHandleOnStack.Create(ref _this), (int)state);
+                using (InternalThreadHolder internalThread = GetInternalThread())
+                {
+                    retState = (ApartmentState)SetApartmentState(internalThread.Value, (int)state);
+                }
             }
 
             // Special case where we pass in Unknown and get back MTA.
@@ -369,13 +419,15 @@ namespace System.Threading
 #if FEATURE_COMINTEROP
         public void DisableComObjectEagerCleanup()
         {
-            DisableComObjectEagerCleanup(GetNativeHandle());
-            GC.KeepAlive(this);
+            using (InternalThreadHolder internalThread = GetInternalThread())
+            {
+                DisableComObjectEagerCleanup(internalThread.Value);
+            }
         }
 
         [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_DisableComObjectEagerCleanup")]
-        private static partial void DisableComObjectEagerCleanup(ThreadHandle t);
+        private static partial void DisableComObjectEagerCleanup(IntPtr internalThread);
 #else // !FEATURE_COMINTEROP
         public void DisableComObjectEagerCleanup() { }
 #endif // FEATURE_COMINTEROP
@@ -387,16 +439,21 @@ namespace System.Threading
         /// </summary>
         public void Interrupt()
         {
-            Interrupt(GetNativeHandle());
-            GC.KeepAlive(this);
+            using (InternalThreadHolder internalThread = GetInternalThread(throwOnDeadThread: false))
+            {
+                if (internalThread.IsDead)
+                    return;
+
+                Interrupt(internalThread.Value);
+            }
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Interrupt")]
-        private static partial void Interrupt(ThreadHandle t);
+        private static partial void Interrupt(IntPtr internalThread);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Join")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static partial bool Join(ObjectHandleOnStack thread, int millisecondsTimeout);
+        private static partial bool Join(IntPtr internalThread, int millisecondsTimeout);
 
         /// <summary>
         /// Waits for the thread to die or for timeout milliseconds to elapse.
@@ -416,8 +473,10 @@ namespace System.Threading
                 throw new ArgumentOutOfRangeException(nameof(millisecondsTimeout), SR.ArgumentOutOfRange_NeedNonNegOrNegative1);
             }
 
-            Thread _this = this;
-            return Join(ObjectHandleOnStack.Create(ref _this), millisecondsTimeout);
+            using (InternalThreadHolder internalThread = GetInternalThread(throwOnDeadThread: false))
+            {
+                return internalThread.IsDead ? true : Join(internalThread.Value, millisecondsTimeout);
+            }
         }
 
         /// <summary>
