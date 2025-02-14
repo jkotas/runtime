@@ -2340,6 +2340,38 @@ namespace System.Runtime.InteropServices.ComTypes
         VAR_DISPATCH = 3,
     }
 }
+namespace System.Runtime.InteropServices.Java
+{
+    [System.Runtime.Versioning.SupportedOSPlatform("android")]
+    public struct ComponentCrossReference
+    {
+        public System.IntPtr SourceGroupIndex;
+        public System.IntPtr DestinationGroupIndex;
+    }
+    [System.Runtime.Versioning.SupportedOSPlatform("android")]
+    [System.CLSCompliantAttribute(false)]
+    public static class JavaMarshal
+    {
+        public static unsafe void Initialize(
+            delegate* unmanaged<
+                System.IntPtr,
+                StronglyConnectedComponent*,
+                System.IntPtr,
+                ComponentCrossReference*,
+                delegate* unmanaged<System.IntPtr, System.IntPtr, void>,
+                void> markCrossReferences) => throw null;
+
+        public static GCHandle CreateReferenceTrackingHandle(object obj, System.IntPtr contextMemory) => throw null;
+     }
+    [System.Runtime.Versioning.SupportedOSPlatform("android")]
+    [System.CLSCompliantAttribute(false)]
+    public unsafe struct StronglyConnectedComponent
+    {
+        public System.IntPtr Count;
+        public System.IntPtr* Handles;
+        public System.IntPtr* ContextMemory;
+    }
+}
 namespace System.Runtime.InteropServices.ObjectiveC
 {
     [System.Runtime.Versioning.SupportedOSPlatformAttribute("macos")]

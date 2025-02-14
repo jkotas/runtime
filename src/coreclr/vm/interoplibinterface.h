@@ -153,7 +153,6 @@ public: // GC interaction
     static void OnEnteredFinalizerQueue(_In_ OBJECTREF object);
 };
 
-
 extern "C" BOOL QCALLTYPE ObjCMarshal_TryInitializeReferenceTracker(
     _In_ ObjCMarshalNative::BeginEndCallback beginEndCallback,
     _In_ ObjCMarshalNative::IsReferencedCallback isReferencedCallback,
@@ -168,6 +167,17 @@ extern "C" BOOL QCALLTYPE ObjCMarshal_TrySetGlobalMessageSendCallback(
     _In_ ObjCMarshalNative::MessageSendFunction msgSendFunction,
     _In_ void* fptr);
 #endif // FEATURE_OBJCMARSHAL
+
+#ifdef FEATURE_JAVAMARSHAL
+
+extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
+    _In_ void* markCrossReferences);
+
+extern "C" void* QCALLTYPE JavaMarshal_CreateReferenceTrackingHandle(
+    _In_ QCall::ObjectHandleOnStack obj,
+    _In_ void* context);
+
+#endif // FEATURE_JAVAMARSHAL
 
 class Interop
 {
