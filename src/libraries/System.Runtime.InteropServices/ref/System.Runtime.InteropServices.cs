@@ -2358,18 +2358,17 @@ namespace System.Runtime.InteropServices.Java
                 StronglyConnectedComponent*,
                 System.IntPtr,
                 ComponentCrossReference*,
-                delegate* unmanaged<System.IntPtr, System.IntPtr, void>,
                 void> markCrossReferences) => throw null;
 
-        public static GCHandle CreateReferenceTrackingHandle(object obj, System.IntPtr contextMemory) => throw null;
+        public static GCHandle CreateReferenceTrackingHandle(object obj, System.IntPtr context) => throw null;
+        public static System.IntPtr GetContext(GCHandle obj) => throw null;
      }
     [System.Runtime.Versioning.SupportedOSPlatform("android")]
     [System.CLSCompliantAttribute(false)]
     public unsafe struct StronglyConnectedComponent
     {
         public System.IntPtr Count;
-        public System.IntPtr* Handles;
-        public System.IntPtr* ContextMemory;
+        public System.IntPtr* Context;
     }
 }
 namespace System.Runtime.InteropServices.ObjectiveC

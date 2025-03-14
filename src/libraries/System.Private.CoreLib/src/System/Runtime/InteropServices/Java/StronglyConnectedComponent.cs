@@ -15,14 +15,9 @@ namespace System.Runtime.InteropServices.Java
         public nint Count;
 
         /// <summary>
-        /// Contains the GCHandles to each object.
-        /// </summary>
-        public IntPtr* Handles;
-
-        /// <summary>
-        /// Contains pointers to context memory passed during
+        /// Contains pointers to context passed during
         /// creation of each GCHandle.
         /// </summary>
-        public IntPtr* ContextMemory;
+        public IntPtr* Context;
     }
 }

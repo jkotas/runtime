@@ -17,7 +17,6 @@ namespace System.Runtime.InteropServices.Java
                 StronglyConnectedComponent*,        // SCC collection
                 nint,                               // Length of CCR collection
                 ComponentCrossReference*,           // CCR collection
-                delegate* unmanaged<nint, IntPtr, void>, // Callback to mark GCHandles
                 void> markCrossReferences)
         {
 #if NATIVEAOT
@@ -32,15 +31,31 @@ namespace System.Runtime.InteropServices.Java
 #endif
         }
 
-        public static GCHandle CreateReferenceTrackingHandle(object obj, IntPtr contextMemory)
+        public static GCHandle CreateReferenceTrackingHandle(object obj, IntPtr context)
         {
 #if NATIVEAOT
             throw new NotImplementedException();
 #else
             ArgumentNullException.ThrowIfNull(obj);
 
-            IntPtr handle = CreateReferenceTrackingHandleInternal(ObjectHandleOnStack.Create(ref obj), contextMemory);
+            IntPtr handle = CreateReferenceTrackingHandleInternal(ObjectHandleOnStack.Create(ref obj), context);
             return GCHandle.FromIntPtr(handle);
+#endif
+        }
+
+        public static IntPtr GetContext(GCHandle obj)
+        {
+#if NATIVEAOT
+            throw new NotImplementedException();
+#else
+            IntPtr handle = GCHandle.ToIntPtr(obj);
+            if (handle == IntPtr.Zero
+                || !GetContextInternal(handle, out IntPtr context))
+            {
+                throw new InvalidOperationException(SR.InvalidOperation_IncorrectGCHandleType);
+            }
+
+            return context;
 #endif
         }
 
@@ -50,7 +65,11 @@ namespace System.Runtime.InteropServices.Java
         private static partial bool InitializeInternal(IntPtr callback);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_CreateReferenceTrackingHandle")]
-        private static partial IntPtr CreateReferenceTrackingHandleInternal(ObjectHandleOnStack obj, IntPtr contextMemory);
+        private static partial IntPtr CreateReferenceTrackingHandleInternal(ObjectHandleOnStack obj, IntPtr context);
+
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_GetContext")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool GetContextInternal(IntPtr handle, out IntPtr context);
 #endif
     }
 }
