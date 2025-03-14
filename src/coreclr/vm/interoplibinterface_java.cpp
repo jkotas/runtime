@@ -30,7 +30,6 @@ namespace
 
     Volatile<BOOL> g_BridgeReady;
     CLREvent* g_BridgeTrigger;
-    Thread* g_BridgeThread;
 
     void FreeArgs(MarkCrossReferenceArgs* mcrargs)
     {
@@ -48,7 +47,7 @@ namespace
         delete mcrargs;
     }
 
-    DWORD WINAPI BridgeThreadStart(void *args)
+    void BridgeThreadWorker()
     {
         while (TRUE)
         {
@@ -58,9 +57,8 @@ namespace
             case (WAIT_TIMEOUT):
             case (WAIT_ABANDONED):
                 g_BridgeReady = FALSE;
-                return 0;
+                return;
             case (WAIT_OBJECT_0):
-                g_BridgeReady = FALSE;
                 break;
             }
 
@@ -69,13 +67,12 @@ namespace
 
             MarkCrossReferenceArgs* mcrargs = g_mcrargs;
             InterlockedExchange((LONG*)&g_mcrargs, NULL);
+            g_BridgeReady = FALSE;
 
             g_MarkCrossReferences(mcrargs->sccsLen, mcrargs->sccs, mcrargs->ccrsLen, mcrargs->ccrs);
 
             FreeArgs(mcrargs);
         }
-
-        return 0;
     }
 }
 
@@ -101,11 +98,6 @@ extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
             g_BridgeReady = FALSE;
             g_BridgeTrigger = new CLREvent();
             g_BridgeTrigger->CreateAutoEvent(FALSE);
-
-            g_BridgeThread = SetupUnstartedThread();
-            BOOL createdThread = g_BridgeThread->CreateNewThread(0, &BridgeThreadStart, NULL, W("JavaBridge"));
-            _ASSERTE(createdThread != FALSE);
-            g_BridgeThread->StartThread();
             success = TRUE;
         }
     }
@@ -113,6 +105,17 @@ extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
     END_QCALL;
 
     return success;
+}
+
+extern "C" void QCALLTYPE JavaMarshal_BridgeMain()
+{
+    QCALL_CONTRACT;
+
+    BEGIN_QCALL;
+
+    BridgeThreadWorker();
+
+    END_QCALL;
 }
 
 extern "C" void* QCALLTYPE JavaMarshal_CreateReferenceTrackingHandle(

@@ -1624,17 +1624,17 @@ void CALLBACK CollectCrossReferenceEntries(_UNCHECKED_OBJECTREF *pObjRef, uintpt
     _ASSERTE(lp1 != NULL);
     _ASSERTE(lp2 != NULL);
 
-    Object *pObj = VolatileLoad((PTR_Object*)pObjRef);
-    _ASSERTE(pObj != NULL);
+    Object** pRef = (Object** )pObjRef;
+    _ASSERTE(*pRef != NULL);
 
     // The object is already marked, so we don't need to ask the bridge about it.
-    if (g_theGCHeap->IsPromoted(pObj))
+    if (g_theGCHeap->IsPromoted(*pRef))
         return;
 
     // Promote the object and let the bridge indicate when the
     // object is actually dead.
     Ops* pOps = (Ops*)lp1;
-    pOps->pfn(&pObj, pOps->sc, 0);
+    pOps->pfn(pRef, pOps->sc, 0);
 
     CrossReferenceList* list = (CrossReferenceList*)lp2;
     list->Add(pObjRef, *pExtraInfo);

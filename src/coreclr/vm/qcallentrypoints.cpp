@@ -431,6 +431,7 @@ static const Entry s_QCall[] =
 #endif
 #if defined(FEATURE_JAVAMARSHAL)
     DllImportEntry(JavaMarshal_Initialize)
+    DllImportEntry(JavaMarshal_BridgeMain)
     DllImportEntry(JavaMarshal_CreateReferenceTrackingHandle)
     DllImportEntry(JavaMarshal_GetContext)
 #endif

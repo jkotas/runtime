@@ -3,6 +3,7 @@
 
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
+using System.Threading;
 
 namespace System.Runtime.InteropServices.Java
 {
@@ -10,6 +11,10 @@ namespace System.Runtime.InteropServices.Java
     [SupportedOSPlatform("android")]
     public static partial class JavaMarshal
     {
+#if !NATIVEAOT
+        private static Thread? s_bridgeThread;
+#endif
+
         public static unsafe void Initialize(
             // Callback used to perform the marking of SCCs.
             delegate* unmanaged<
@@ -28,6 +33,13 @@ namespace System.Runtime.InteropServices.Java
             {
                 throw new InvalidOperationException(SR.InvalidOperation_ReinitializeJavaMarshal);
             }
+
+            s_bridgeThread = new Thread(BridgeMain)
+            {
+                IsBackground = true,
+                Name = ".NET GC Bridge Thread"
+            };
+            s_bridgeThread.Start();
 #endif
         }
 
@@ -63,6 +75,9 @@ namespace System.Runtime.InteropServices.Java
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_Initialize")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static partial bool InitializeInternal(IntPtr callback);
+
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_BridgeMain")]
+        private static partial void BridgeMain();
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_CreateReferenceTrackingHandle")]
         private static partial IntPtr CreateReferenceTrackingHandleInternal(ObjectHandleOnStack obj, IntPtr context);
