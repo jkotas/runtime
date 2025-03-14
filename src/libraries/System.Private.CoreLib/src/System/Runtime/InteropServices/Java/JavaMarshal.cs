@@ -11,10 +11,6 @@ namespace System.Runtime.InteropServices.Java
     [SupportedOSPlatform("android")]
     public static partial class JavaMarshal
     {
-#if !NATIVEAOT
-        private static Thread? s_bridgeThread;
-#endif
-
         public static unsafe void Initialize(
             // Callback used to perform the marking of SCCs.
             delegate* unmanaged<
@@ -34,12 +30,11 @@ namespace System.Runtime.InteropServices.Java
                 throw new InvalidOperationException(SR.InvalidOperation_ReinitializeJavaMarshal);
             }
 
-            s_bridgeThread = new Thread(BridgeMain)
+            new Thread(BridgeMain)
             {
                 IsBackground = true,
                 Name = ".NET GC Bridge"
-            };
-            s_bridgeThread.Start();
+            }.Start();
 #endif
         }
 
