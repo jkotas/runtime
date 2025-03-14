@@ -2583,6 +2583,10 @@ static PCODE PreStubWorker_Preemptive(
         // more we can do except fail fast. The reverse P/Invoke isn't
         // going to work.
         CREATETHREAD_IF_NULL_FAILFAST(currentThread, W("Failed to setup new thread during reverse P/Invoke"));
+
+        // [TODO] Ensure thread is in Preemptive mode.
+        if (currentThread->PreemptiveGCDisabled())
+            currentThread->EnablePreemptiveGC();
     }
 
     MAKE_CURRENT_THREAD_AVAILABLE_EX(currentThread);
