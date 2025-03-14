@@ -1533,6 +1533,172 @@ void Ref_ScanSizedRefHandles(uint32_t condemned, uint32_t maxgen, ScanContext* s
 }
 #endif // FEATURE_SIZED_REF_HANDLES
 
+#ifdef FEATURE_GCBRIDGE
+
+// A trivial list data strucuture to hold the cross-reference entries
+class CrossReferenceList final
+{
+private:
+    struct Node
+    {
+        _UNCHECKED_OBJECTREF* pObjRef;
+        uintptr_t pExtraInfo;
+        Node* next;
+    };
+
+    Node* head;
+    size_t count;
+
+public:
+    CrossReferenceList() : head(nullptr), count(0) {}
+
+    ~CrossReferenceList()
+    {
+        Node* current = head;
+        while (current != nullptr)
+        {
+            Node* next = current->next;
+            delete current;
+            current = next;
+        }
+    }
+
+    void Add(_UNCHECKED_OBJECTREF* pObjRef, uintptr_t pExtraInfo)
+    {
+        Node* newNode = new Node{ pObjRef, pExtraInfo, head };
+        head = newNode;
+        ++count;
+    }
+
+    size_t Count() const
+    {
+        return count;
+    }
+
+    class Iterator
+    {
+    private:
+        Node* current;
+
+    public:
+        Iterator(Node* start) : current(start) {}
+
+        bool operator!=(const Iterator& other) const
+        {
+            return current != other.current;
+        }
+
+        void operator++()
+        {
+            if (current != nullptr)
+                current = current->next;
+        }
+
+        std::pair<_UNCHECKED_OBJECTREF*, uintptr_t> operator*() const
+        {
+            return { current->pObjRef, current->pExtraInfo };
+        }
+    };
+
+    Iterator begin() const
+    {
+        return Iterator(head);
+    }
+
+    Iterator end() const
+    {
+        return Iterator(nullptr);
+    }
+};
+
+struct Ops
+{
+    ScanContext* sc;
+    Ref_promote_func* pfn;
+};
+
+void CALLBACK CollectCrossReferenceEntries(_UNCHECKED_OBJECTREF *pObjRef, uintptr_t *pExtraInfo, uintptr_t lp1, uintptr_t lp2)
+{
+    WRAPPER_NO_CONTRACT;
+    _ASSERTE(pObjRef != NULL);
+    _ASSERTE(lp1 != NULL);
+    _ASSERTE(lp2 != NULL);
+
+    Object *pObj = VolatileLoad((PTR_Object*)pObjRef);
+    _ASSERTE(pObj != NULL);
+
+    // The object is already marked, so we don't need to ask the bridge about it.
+    if (g_theGCHeap->IsPromoted(pObj))
+        return;
+
+    // Promote the object and let the bridge indicate when the
+    // object is actually dead.
+    Ops* pOps = (Ops*)lp1;
+    pOps->pfn(&pObj, pOps->sc, 0);
+
+    CrossReferenceList* list = (CrossReferenceList*)lp2;
+    list->Add(pObjRef, *pExtraInfo);
+}
+
+void Ref_TraceGCBridge(uint32_t condemned, uint32_t maxgen, ScanContext* sc, Ref_promote_func* fn)
+{
+    WRAPPER_NO_CONTRACT;
+    _ASSERTE(!sc->concurrent);
+
+    uint32_t types[] =
+    {
+        HNDTYPE_CROSSREFERENCE
+    };
+    uint32_t flags = HNDGCF_NORMAL | HNDGCF_EXTRAINFO;
+
+    Ops ops;
+    ops.sc = sc;
+    ops.pfn = fn;
+    CrossReferenceList list;
+    HandleTableMap *walk = &g_HandleTableMap;
+    while (walk)
+    {
+        for (uint32_t i = 0; i < INITIAL_HANDLE_TABLE_ARRAY_SIZE; i ++)
+        {
+            if (walk->pBuckets[i] != NULL)
+            {
+                int uCPUindex = getSlotNumber(sc);
+                int uCPUlimit = getNumberOfSlots();
+                assert(uCPUlimit > 0);
+                int uCPUstep = getThreadCount(sc);
+                HHANDLETABLE* pTable = walk->pBuckets[i]->pTable;
+                for ( ; uCPUindex < uCPUlimit; uCPUindex += uCPUstep)
+                {
+                    HHANDLETABLE hTable = pTable[uCPUindex];
+                    if (hTable)
+                        HndScanHandlesForGC(hTable, CollectCrossReferenceEntries, (uintptr_t)&ops, (uintptr_t)&list, types, ARRAY_SIZE(types), condemned, maxgen, flags);
+                }
+            }
+        }
+        walk = walk->pNext;
+    }
+
+    if (list.Count() != 0)
+    {
+        // [TODO] Implement the SCC algorithm.
+        size_t sccsCount = 1;
+        StronglyConnectedComponent* sccs = (StronglyConnectedComponent*)malloc(sizeof(StronglyConnectedComponent) * sccsCount);
+        sccs->Count = list.Count();
+        sccs->Context = (uintptr_t*)malloc(sizeof(uintptr_t) * sccs->Count);
+
+        uintptr_t* curr = sccs->Context;
+        for (auto& entry : list)
+        {
+            *curr = entry.second;
+            curr++;
+        }
+
+        // The callee here will free the allocated memory.
+        GCToEEInterface::TriggerGCBridge(sccsCount, sccs, 0, nullptr);
+    }
+}
+#endif // FEATURE_GCBRIDGE
+
 void Ref_CheckAlive(uint32_t condemned, uint32_t maxgen, ScanContext *sc)
 {
     WRAPPER_NO_CONTRACT;
@@ -1617,6 +1783,9 @@ void Ref_UpdatePointers(uint32_t condemned, uint32_t maxgen, ScanContext* sc, Re
 #endif
 #ifdef FEATURE_SIZED_REF_HANDLES
         HNDTYPE_SIZEDREF,
+#endif
+#ifdef FEATURE_GCBRIDGE
+        HNDTYPE_CROSSREFERENCE,
 #endif
     };
 
@@ -1812,9 +1981,9 @@ void Ref_AgeHandles(uint32_t condemned, uint32_t maxgen, ScanContext* sc)
         HNDTYPE_SIZEDREF,
 #endif
         HNDTYPE_WEAK_INTERIOR_POINTER,
-// #ifdef FEATURE_GCBRIDGE
-//         HNDTYPE_CROSSREFERENCE,
-// #endif
+#ifdef FEATURE_GCBRIDGE
+        HNDTYPE_CROSSREFERENCE,
+#endif
     };
 
     // perform a multi-type scan that ages the handles
@@ -1872,9 +2041,9 @@ void Ref_RejuvenateHandles(uint32_t condemned, uint32_t maxgen, ScanContext* sc)
         HNDTYPE_SIZEDREF,
 #endif
         HNDTYPE_WEAK_INTERIOR_POINTER,
-// #ifdef FEATURE_GCBRIDGE
-//         HNDTYPE_CROSSREFERENCE,
-// #endif
+#ifdef FEATURE_GCBRIDGE
+        HNDTYPE_CROSSREFERENCE,
+#endif
     };
 
     // reset the ages of these handles

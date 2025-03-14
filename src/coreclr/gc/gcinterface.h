@@ -143,6 +143,18 @@ struct EtwGCSettingsInfo
     bool no_affinitize_p;
 };
 
+struct StronglyConnectedComponent
+{
+    size_t Count;
+    uintptr_t* Context;
+};
+
+struct ComponentCrossReference
+{
+    size_t SourceGroupIndex;
+    size_t DestinationGroupIndex;
+};
+
 // Opaque type for tracking object pointers
 #ifndef DACCESS_COMPILE
 struct OBJECTHANDLE__
