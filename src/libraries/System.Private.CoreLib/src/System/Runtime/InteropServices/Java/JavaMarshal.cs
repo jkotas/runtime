@@ -37,7 +37,7 @@ namespace System.Runtime.InteropServices.Java
             s_bridgeThread = new Thread(BridgeMain)
             {
                 IsBackground = true,
-                Name = ".NET GC Bridge Thread"
+                Name = ".NET GC Bridge"
             };
             s_bridgeThread.Start();
 #endif
