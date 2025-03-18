@@ -1611,18 +1611,11 @@ public:
     }
 };
 
-struct Ops
-{
-    ScanContext* sc;
-    Ref_promote_func* pfn;
-};
-
 void CALLBACK CollectCrossReferenceEntries(_UNCHECKED_OBJECTREF *pObjRef, uintptr_t *pExtraInfo, uintptr_t lp1, uintptr_t lp2)
 {
     WRAPPER_NO_CONTRACT;
     _ASSERTE(pObjRef != NULL);
     _ASSERTE(lp1 != NULL);
-    _ASSERTE(lp2 != NULL);
 
     Object** pRef = (Object** )pObjRef;
     _ASSERTE(*pRef != NULL);
@@ -1631,12 +1624,8 @@ void CALLBACK CollectCrossReferenceEntries(_UNCHECKED_OBJECTREF *pObjRef, uintpt
     if (g_theGCHeap->IsPromoted(*pRef))
         return;
 
-    // Promote the object and let the bridge indicate when the
-    // object is actually dead.
-    Ops* pOps = (Ops*)lp1;
-    pOps->pfn(pRef, pOps->sc, 0);
-
-    CrossReferenceList* list = (CrossReferenceList*)lp2;
+    // The object is not marked, so we need to ask the bridge about it.
+    CrossReferenceList* list = (CrossReferenceList*)lp1;
     list->Add(pObjRef, *pExtraInfo);
 }
 
@@ -1651,9 +1640,6 @@ void Ref_TraceGCBridge(uint32_t condemned, uint32_t maxgen, ScanContext* sc, Ref
     };
     uint32_t flags = HNDGCF_NORMAL | HNDGCF_EXTRAINFO;
 
-    Ops ops;
-    ops.sc = sc;
-    ops.pfn = fn;
     CrossReferenceList list;
     HandleTableMap *walk = &g_HandleTableMap;
     while (walk)
@@ -1671,7 +1657,7 @@ void Ref_TraceGCBridge(uint32_t condemned, uint32_t maxgen, ScanContext* sc, Ref
                 {
                     HHANDLETABLE hTable = pTable[uCPUindex];
                     if (hTable)
-                        HndScanHandlesForGC(hTable, CollectCrossReferenceEntries, (uintptr_t)&ops, (uintptr_t)&list, types, ARRAY_SIZE(types), condemned, maxgen, flags);
+                        HndScanHandlesForGC(hTable, CollectCrossReferenceEntries, (uintptr_t)&list, 0, types, ARRAY_SIZE(types), condemned, maxgen, flags);
                 }
             }
         }
@@ -1689,6 +1675,10 @@ void Ref_TraceGCBridge(uint32_t condemned, uint32_t maxgen, ScanContext* sc, Ref
         uintptr_t* curr = sccs->Context;
         for (auto& entry : list)
         {
+            // Promote the object and let the bridge indicate when the
+            // object is actually dead.
+            fn(entry.first, sc, 0);
+
             *curr = entry.second;
             curr++;
         }

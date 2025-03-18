@@ -24,54 +24,52 @@ namespace
         StronglyConnectedComponent* sccs;
         size_t ccrsLen;
         ComponentCrossReference* ccrs;
+
+        MarkCrossReferenceArgs(size_t sccsLen, StronglyConnectedComponent* sccs, size_t ccrsLen, ComponentCrossReference* ccrs)
+            : sccsLen(sccsLen)
+            , sccs(sccs)
+            , ccrsLen(ccrsLen)
+            , ccrs(ccrs)
+        { }
+
+        ~MarkCrossReferenceArgs()
+        {
+            // Free the memory allocated for the arguments
+            // Allocated by the GC.
+            // See TriggerGCBridge.
+            for (size_t i = 0; i < sccsLen; i++)
+            {
+                free(sccs[i].Context);
+            }
+            free(sccs);
+            free(ccrs);
+        }
     };
 
-    MarkCrossReferenceArgs* g_mcrargs;
-
-    Volatile<BOOL> g_BridgeReady;
+    VolatilePtr<MarkCrossReferenceArgs> g_mcrargs;
     CLREvent* g_BridgeTrigger;
-
-    void FreeArgs(MarkCrossReferenceArgs* mcrargs)
-    {
-        _ASSERTE(mcrargs != NULL);
-
-        // Free the memory allocated for the arguments
-        // Allocated by the GC.
-        for (size_t i = 0; i < mcrargs->sccsLen; i++)
-        {
-            free(mcrargs->sccs[i].Context);
-        }
-        free(mcrargs->sccs);
-        free(mcrargs->ccrs);
-        // Allocated during the trigger call
-        delete mcrargs;
-    }
 
     void BridgeThreadWorker()
     {
         while (TRUE)
         {
-            g_BridgeReady = TRUE;
             switch (g_BridgeTrigger->Wait(INFINITE, FALSE))
             {
             case (WAIT_TIMEOUT):
             case (WAIT_ABANDONED):
-                g_BridgeReady = FALSE;
                 return;
             case (WAIT_OBJECT_0):
                 break;
             }
 
-            if (g_mcrargs == NULL)
+            if (!g_mcrargs)
                 continue;
 
-            MarkCrossReferenceArgs* mcrargs = g_mcrargs;
-            InterlockedExchange((LONG*)&g_mcrargs, NULL);
-            g_BridgeReady = FALSE;
-
+            MarkCrossReferenceArgs* mcrargs = (MarkCrossReferenceArgs*)g_mcrargs;
             g_MarkCrossReferences(mcrargs->sccsLen, mcrargs->sccs, mcrargs->ccrsLen, mcrargs->ccrs);
 
-            FreeArgs(mcrargs);
+            delete mcrargs;
+            InterlockedExchangeT(g_mcrargs.GetPointer(), NULL);
         }
     }
 }
@@ -95,7 +93,6 @@ extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
         {
             g_MarkCrossReferences = (CrossreferenceHandleCallback)markCrossReferences;
 
-            g_BridgeReady = FALSE;
             g_BridgeTrigger = new CLREvent();
             g_BridgeTrigger->CreateAutoEvent(FALSE);
             success = TRUE;
@@ -174,22 +171,15 @@ void JavaNative::TriggerGCBridge(
     }
     CONTRACTL_END;
 
+    // Not initialized
     if (g_MarkCrossReferences == NULL)
         return;
 
-    MarkCrossReferenceArgs* mcrargs = new MarkCrossReferenceArgs();
-    mcrargs->sccsLen = sccsLen;
-    mcrargs->sccs = sccs;
-    mcrargs->ccrsLen = ccrsLen;
-    mcrargs->ccrs = ccrs;
-
-    if (g_BridgeReady == FALSE)
-    {
-        FreeArgs(mcrargs);
+    // Bridge is currently running
+    if (g_mcrargs)
         return;
-    }
 
-    g_mcrargs = mcrargs;
+    g_mcrargs = new MarkCrossReferenceArgs(sccsLen, sccs, ccrsLen, ccrs);
     g_BridgeTrigger->Set();
 }
 
