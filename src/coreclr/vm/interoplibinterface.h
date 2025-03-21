@@ -182,11 +182,14 @@ public: // GC interaction
 extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
     _In_ void* markCrossReferences);
 
-extern "C" void QCALLTYPE JavaMarshal_BridgeMain();
-
 extern "C" void* QCALLTYPE JavaMarshal_CreateReferenceTrackingHandle(
     _In_ QCall::ObjectHandleOnStack obj,
     _In_ void* context);
+
+extern "C" void QCALLTYPE JavaMarshal_ReleaseMarkCrossReferenceResources(
+    _In_ int32_t sccsLen,
+    _In_ StronglyConnectedComponent* sccs,
+    _In_ ComponentCrossReference* ccrs);
 
 extern "C" BOOL QCALLTYPE JavaMarshal_GetContext(
     _In_ OBJECTHANDLE handle,

@@ -2362,6 +2362,7 @@ namespace System.Runtime.InteropServices.Java
 
         public static GCHandle CreateReferenceTrackingHandle(object obj, System.IntPtr context) => throw null;
         public static System.IntPtr GetContext(GCHandle obj) => throw null;
+        public static unsafe void ReleaseMarkCrossReferenceResources(System.Span<StronglyConnectedComponent> sccs, System.Span<ComponentCrossReference> ccrs) => throw null;
      }
     [System.Runtime.Versioning.SupportedOSPlatform("android")]
     [System.CLSCompliantAttribute(false)]

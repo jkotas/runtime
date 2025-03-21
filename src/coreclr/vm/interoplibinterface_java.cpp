@@ -17,61 +17,6 @@ namespace
 {
     BOOL g_Initialized;
     CrossreferenceHandleCallback g_MarkCrossReferences;
-
-    struct MarkCrossReferenceArgs
-    {
-        size_t sccsLen;
-        StronglyConnectedComponent* sccs;
-        size_t ccrsLen;
-        ComponentCrossReference* ccrs;
-
-        MarkCrossReferenceArgs(size_t sccsLen, StronglyConnectedComponent* sccs, size_t ccrsLen, ComponentCrossReference* ccrs)
-            : sccsLen(sccsLen)
-            , sccs(sccs)
-            , ccrsLen(ccrsLen)
-            , ccrs(ccrs)
-        { }
-
-        ~MarkCrossReferenceArgs()
-        {
-            // Free the memory allocated for the arguments
-            // Allocated by the GC.
-            // See TriggerGCBridge.
-            for (size_t i = 0; i < sccsLen; i++)
-            {
-                free(sccs[i].Context);
-            }
-            free(sccs);
-            free(ccrs);
-        }
-    };
-
-    VolatilePtr<MarkCrossReferenceArgs> g_mcrargs;
-    CLREvent* g_BridgeTrigger;
-
-    void BridgeThreadWorker()
-    {
-        while (TRUE)
-        {
-            switch (g_BridgeTrigger->Wait(INFINITE, FALSE))
-            {
-            case (WAIT_TIMEOUT):
-            case (WAIT_ABANDONED):
-                return;
-            case (WAIT_OBJECT_0):
-                break;
-            }
-
-            if (!g_mcrargs)
-                continue;
-
-            MarkCrossReferenceArgs* mcrargs = (MarkCrossReferenceArgs*)g_mcrargs;
-            g_MarkCrossReferences(mcrargs->sccsLen, mcrargs->sccs, mcrargs->ccrsLen, mcrargs->ccrs);
-
-            delete mcrargs;
-            InterlockedExchangeT(g_mcrargs.GetPointer(), NULL);
-        }
-    }
 }
 
 extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
@@ -92,9 +37,6 @@ extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
         if (InterlockedCompareExchange((LONG*)&g_Initialized, TRUE, FALSE) == FALSE)
         {
             g_MarkCrossReferences = (CrossreferenceHandleCallback)markCrossReferences;
-
-            g_BridgeTrigger = new CLREvent();
-            g_BridgeTrigger->CreateAutoEvent(FALSE);
             success = TRUE;
         }
     }
@@ -102,17 +44,6 @@ extern "C" BOOL QCALLTYPE JavaMarshal_Initialize(
     END_QCALL;
 
     return success;
-}
-
-extern "C" void QCALLTYPE JavaMarshal_BridgeMain()
-{
-    QCALL_CONTRACT;
-
-    BEGIN_QCALL;
-
-    BridgeThreadWorker();
-
-    END_QCALL;
 }
 
 extern "C" void* QCALLTYPE JavaMarshal_CreateReferenceTrackingHandle(
@@ -133,29 +64,44 @@ extern "C" void* QCALLTYPE JavaMarshal_CreateReferenceTrackingHandle(
     return (void*)instHandle;
 }
 
+extern "C" void QCALLTYPE JavaMarshal_ReleaseMarkCrossReferenceResources(
+    _In_ int32_t sccsLen,
+    _In_ StronglyConnectedComponent* sccs,
+    _In_ ComponentCrossReference* ccrs)
+{
+    QCALL_CONTRACT;
+
+    BEGIN_QCALL;
+
+    // Memory was allocated for the collections by the GC.
+    // See callers of GCToEEInterface::TriggerGCBridge().
+
+    // Free memory in each of the SCCs
+    for (int32_t i = 0; i < sccsLen; i++)
+    {
+        free(sccs[i].Context);
+    }
+    free(sccs);
+    free(ccrs);
+
+    END_QCALL;
+}
+
 extern "C" BOOL QCALLTYPE JavaMarshal_GetContext(
     _In_ OBJECTHANDLE handle,
     _Out_ void** context)
 {
-    QCALL_CONTRACT;
+    QCALL_CONTRACT_NO_GC_TRANSITION;
     _ASSERTE(handle != NULL);
     _ASSERTE(context != NULL);
 
-    BOOL success = FALSE;
-
-    BEGIN_QCALL;
-
     IGCHandleManager* mgr = GCHandleUtilities::GetGCHandleManager();
     HandleType type = mgr->HandleFetchType(handle);
-    if (type == HNDTYPE_CROSSREFERENCE)
-    {
-        *context = mgr->GetExtraInfoFromHandle(handle);
-        success = TRUE;
-    }
+    if (type != HNDTYPE_CROSSREFERENCE)
+        return FALSE;
 
-    END_QCALL;
-
-    return success;
+    *context = mgr->GetExtraInfoFromHandle(handle);
+    return TRUE;
 }
 
 void JavaNative::TriggerGCBridge(
@@ -175,12 +121,7 @@ void JavaNative::TriggerGCBridge(
     if (g_MarkCrossReferences == NULL)
         return;
 
-    // Bridge is currently running
-    if (g_mcrargs)
-        return;
-
-    g_mcrargs = new MarkCrossReferenceArgs(sccsLen, sccs, ccrsLen, ccrs);
-    g_BridgeTrigger->Set();
+    g_MarkCrossReferences(sccsLen, sccs, ccrsLen, ccrs);
 }
 
 #endif // FEATURE_JAVAMARSHAL

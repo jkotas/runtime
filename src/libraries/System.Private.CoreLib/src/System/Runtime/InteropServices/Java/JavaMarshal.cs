@@ -3,7 +3,6 @@
 
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
-using System.Threading;
 
 namespace System.Runtime.InteropServices.Java
 {
@@ -29,12 +28,6 @@ namespace System.Runtime.InteropServices.Java
             {
                 throw new InvalidOperationException(SR.InvalidOperation_ReinitializeJavaMarshal);
             }
-
-            new Thread(BridgeMain)
-            {
-                IsBackground = true,
-                Name = ".NET GC Bridge"
-            }.Start();
 #endif
         }
 
@@ -66,18 +59,33 @@ namespace System.Runtime.InteropServices.Java
 #endif
         }
 
+        public static unsafe void ReleaseMarkCrossReferenceResources(
+            Span<StronglyConnectedComponent> sccs,
+            Span<ComponentCrossReference> ccrs)
+        {
+#if NATIVEAOT
+            throw new NotImplementedException();
+#else
+            ReleaseMarkCrossReferenceResources(
+                sccs.Length,
+                Unsafe.AsPointer(ref MemoryMarshal.GetReference(sccs)),
+                Unsafe.AsPointer(ref MemoryMarshal.GetReference(ccrs)));
+#endif
+        }
+
 #if !NATIVEAOT
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_Initialize")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static partial bool InitializeInternal(IntPtr callback);
 
-        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_BridgeMain")]
-        private static partial void BridgeMain();
-
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_CreateReferenceTrackingHandle")]
         private static partial IntPtr CreateReferenceTrackingHandleInternal(ObjectHandleOnStack obj, IntPtr context);
 
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_ReleaseMarkCrossReferenceResources")]
+        private static unsafe partial void ReleaseMarkCrossReferenceResources(int length, void* sccs, void* ccrs);
+
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "JavaMarshal_GetContext")]
+        [SuppressGCTransition]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static partial bool GetContextInternal(IntPtr handle, out IntPtr context);
 #endif
