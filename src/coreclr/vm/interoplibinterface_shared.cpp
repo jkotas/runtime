@@ -154,3 +154,23 @@ void Interop::OnAfterGCScanRoots(_In_ bool isConcurrent)
         ObjCMarshalNative::AfterRefCountedHandleCallbacks();
 #endif // FEATURE_OBJCMARSHAL
 }
+
+#ifdef FEATURE_GCBRIDGE
+void Interop::TriggerGCBridge(
+    _In_ size_t sccsLen,
+    _In_ StronglyConnectedComponent* sccs,
+    _In_ size_t ccrsLen,
+    _In_ ComponentCrossReference* ccrs)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+    }
+    CONTRACTL_END;
+
+#ifdef FEATURE_JAVAMARSHAL
+    JavaNative::TriggerGCBridge(sccsLen, sccs, ccrsLen, ccrs);
+#endif // FEATURE_JAVAMARSHAL
+}
+#endif // FEATURE_GCBRIDGE
