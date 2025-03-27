@@ -21,6 +21,16 @@ namespace System.Reflection
             _signature = method.Signature;
             _invokeFunc_RefArgs = InterpretedInvoke_Method;
             // No _invocationFlags for DynamicMethod.
+
+            // HACK BEGIN: Make InvokeHelper reachable
+
+            delegate*<object, IntPtr, object, object?> x1 = &InvokeHelpers.InvokeInstance_Int32_Void;
+            ((IntPtr)x1).ToString();
+
+            delegate*<object, IntPtr, object?> x2 = &InvokeHelpers.InvokeInstance_Guid;
+            ((IntPtr)x2).ToString();
+
+            // HACK END: Make InvokeHelper reachable
         }
 
         private unsafe MethodInvoker(RuntimeConstructorInfo constructor) : this(constructor, constructor.Signature.Arguments)

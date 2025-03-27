@@ -1,0 +1,53 @@
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
+using System.Reflection.Metadata.Ecma335;
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+namespace Internal.IL
+{
+    public class InvokeHelpersIntrinsics
+    {
+        public static MethodIL EmitIL(MethodDesc method)
+        {
+            MethodIL methodIL = EcmaMethodIL.Create((EcmaMethod)method);
+
+            if (method.Name.StartsWith("InvokeInstance_", StringComparison.Ordinal))
+            {
+                methodIL = new ExplicitThisCall(methodIL);
+            }
+
+            return methodIL;
+        }
+
+        private class ExplicitThisCall : MethodIL
+        {
+            private readonly MethodIL _wrappedMethodIL;
+
+            public ExplicitThisCall(MethodIL wrapped)
+            {
+                _wrappedMethodIL = wrapped;
+            }
+
+            public override MethodDesc OwningMethod => _wrappedMethodIL.OwningMethod;
+            public override int MaxStack => _wrappedMethodIL.MaxStack;
+            public override bool IsInitLocals => _wrappedMethodIL.IsInitLocals;
+            public override ILExceptionRegion[] GetExceptionRegions() => _wrappedMethodIL.GetExceptionRegions();
+            public override byte[] GetILBytes() => _wrappedMethodIL.GetILBytes();
+            public override LocalVariableDefinition[] GetLocals() => _wrappedMethodIL.GetLocals();
+            public override object GetObject(int token, NotFoundBehavior notFoundBehavior)
+            {
+                object item = _wrappedMethodIL.GetObject(token, notFoundBehavior);
+                if (item is MethodSignature sig)
+                {
+                    var builder = new MethodSignatureBuilder(sig);
+                    builder.Flags = (sig.Flags | MethodSignatureFlags.ExplicitThis) & ~MethodSignatureFlags.Static;
+                    item = builder.ToSignature();
+                }
+                return item;
+            }
+        }
+    }
+}
