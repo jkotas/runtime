@@ -237,7 +237,7 @@ inline WaitEventLink *ThreadQueue::DequeueThread(SyncBlock *psb)
 
     if (pLink)
     {
-        psb->m_Link.m_pNext = pLink->m_pNext;
+        InterlockedExchangeT(&psb->m_Link.m_pNext, pLink->m_pNext);
 #ifdef _DEBUG
         pLink->m_pNext = (SLink *)POISONC;
 #endif
@@ -276,7 +276,7 @@ inline void ThreadQueue::EnqueueThread(WaitEventLink *pWaitEventLink, SyncBlock 
 
         pPrior = pPrior->m_pNext;
     }
-    pPrior->m_pNext = &pWaitEventLink->m_LinkSB;
+    InterlockedExchangeT(&pPrior->m_pNext, &pWaitEventLink->m_LinkSB);
 }
 
 
