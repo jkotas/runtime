@@ -12,23 +12,30 @@ include AsmMacros_Shared.inc
 ; allocation context then automatically fallback to the slow allocation path.
 ;  ECX == MethodTable
 FASTCALL_FUNC   RhpNewFast, 4
+        push        ebx
+        push        esi
+
+        mov         ebx, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
+
         ; edx = ee_alloc_context pointer, TRASHES eax
         INLINE_GET_ALLOC_CONTEXT edx, eax
 
-        mov         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
-        add         eax, [edx + OFFSETOF__ee_alloc_context__alloc_ptr]
-        jc          AllocFailed
-        cmp         eax, [edx + OFFSETOF__ee_alloc_context__combined_limit]
+        mov         esi, [edx + OFFSETOF__ee_alloc_context__combined_limit]
+        mov         eax, [edx + OFFSETOF__ee_alloc_context__alloc_ptr]
+        sub         esi, eax
+        cmp         ebx, esi
         ja          AllocFailed
-        mov         [edx + OFFSETOF__ee_alloc_context__alloc_ptr], eax
-
-        ; calc the new object pointer and initialize it
-        sub         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
+        add         ebx, eax
         mov         [eax + OFFSETOF__Object__m_pEEType], ecx
+        mov         [edx + OFFSETOF__ee_alloc_context__alloc_ptr], ebx
 
+        pop         esi
+        pop         ebx
         ret
 
 AllocFailed:
+        pop         esi
+        pop         ebx
         xor         edx, edx
         jmp         @RhpNewObject@8
 FASTCALL_ENDFUNC
