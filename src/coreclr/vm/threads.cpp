@@ -3312,12 +3312,12 @@ DWORD Thread::DoAppropriateWaitWorker(int countHandles, HANDLE *handles, BOOL wa
     }
 
     ULONGLONG dwStart = 0, dwEnd;
-retry:
+
     if (millis != INFINITE)
     {
         dwStart = minipal_lowres_ticks();
     }
-
+retry:
     if (tryNonblockingWaitFirst)
     {
         // We have a final wait result from the nonblocking wait above
@@ -3347,10 +3347,9 @@ retry:
                 ret = WAIT_TIMEOUT;
                 goto WaitCompleted;
             }
-            else
-            {
-                millis -= (DWORD)(dwEnd - dwStart);
-            }
+
+            millis -= (DWORD)(dwEnd - dwStart);
+            dwStart = dwEnd;
         }
         goto retry;
     }
@@ -3432,10 +3431,9 @@ retry:
                     ret = WAIT_TIMEOUT;
                     goto WaitCompleted;
                 }
-                else
-                {
-                    millis -= (DWORD)(dwEnd - dwStart);
-                }
+
+                millis -= (DWORD)(dwEnd - dwStart);
+                dwStart = dwEnd;
             }
             goto retry;
         }
@@ -3572,16 +3570,14 @@ retry:
         if (INFINITE != millis)
         {
             dwEnd = minipal_lowres_ticks();
-            if (dwStart + millis <= dwEnd)
+            if (dwEnd - dwStart >= millis)
             {
                 ret = WAIT_TIMEOUT;
                 goto WaitCompleted;
             }
-            else
-            {
-                millis -= (DWORD)(dwEnd - dwStart);
-            }
-            dwStart = minipal_lowres_ticks();
+
+            millis -= (DWORD)(dwEnd - dwStart);
+            dwStart = dwEnd;
         }
         //Retry case we don't want to signal again so only do the wait...
         ret = WaitForSingleObjectEx(pHandles[1],millis,TRUE);
