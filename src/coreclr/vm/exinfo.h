@@ -326,10 +326,8 @@ struct ExInfo
     PCODE m_pCatchHandler;
     // SP of the frame handling the exception
     TADDR m_handlingFrameSP;
-#ifdef TARGET_ARM64
     // PC of the frame handling the exception
     PCODE m_handlingFramePC;
-#endif
 
 #ifdef TARGET_UNIX
     // Set to TRUE to take ownership of the EXCEPTION_RECORD and CONTEXT_RECORD in the m_ptrs. When set, the

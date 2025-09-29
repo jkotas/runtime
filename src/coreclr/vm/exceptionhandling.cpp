@@ -4294,9 +4294,7 @@ void DECLSPEC_NORETURN DispatchExSecondPass(ExInfo *pExInfo)
     CONTRACTL_END;
 
     TADDR handlingFrameSP = pExInfo->m_handlingFrameSP;
-#ifdef TARGET_ARM64
     PCODE handlingFramePC = pExInfo->m_handlingFramePC;
-#endif
     PCODE pCatchHandler = pExInfo->m_pCatchHandler;
 
     StackFrameIterator *pFrameIter = &pExInfo->m_frameIter;
@@ -4326,10 +4324,7 @@ void DECLSPEC_NORETURN DispatchExSecondPass(ExInfo *pExInfo)
         }
 
         if ((GetRegdisplaySP(pFrameIter->m_crawl.GetRegisterSet()) == handlingFrameSP)
-#if TARGET_ARM64
-            && (GetControlPC(pFrameIter->m_crawl.GetRegisterSet()) == handlingFramePC)
-#endif  
-            )
+            && (GetControlPC(pFrameIter->m_crawl.GetRegisterSet()) == handlingFramePC))
         {
             // invoke only a partial second-pass here...
             InvokeSecondPass(pExInfo, startIdx, catchingTryRegionIdx);
