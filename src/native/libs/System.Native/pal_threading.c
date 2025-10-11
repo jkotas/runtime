@@ -153,7 +153,7 @@ void SystemNative_LowLevelMonitor_Wait(LowLevelMonitor* monitor)
 
     int error;
 
-    errror = pthread_cond_wait(&monitor->Condition, &monitor->Mutex);
+    error = pthread_cond_wait(&monitor->Condition, &monitor->Mutex);
     assert(error == 0);
 
     SetIsLocked(monitor, true);
