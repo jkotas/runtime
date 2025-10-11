@@ -119,6 +119,8 @@ int32_t CryptoNative_RsaDecrypt(EVP_PKEY* pkey,
     assert(padding >= RsaPaddingPkcs1 && padding <= RsaPaddingOaepOrPss);
     assert(digest != NULL || padding == RsaPaddingPkcs1);
 
+    size_t written;
+
     ERR_clear_error();
 
     EVP_PKEY_CTX* ctx = EvpPKeyCtxCreateFromPKey(pkey, extraHandle);
@@ -151,7 +153,7 @@ int32_t CryptoNative_RsaDecrypt(EVP_PKEY* pkey,
         }
     }
 
-    size_t written = Int32ToSizeT(destinationLen);
+    written = Int32ToSizeT(destinationLen);
 
     if (EVP_PKEY_decrypt(ctx, destination, &written, source, Int32ToSizeT(sourceLen)) > 0)
     {

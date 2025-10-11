@@ -256,20 +256,22 @@ int32_t CryptoNative_MLDsaVerifyExternalMu(EVP_PKEY* pKey,
         goto done;
     }
 
-    int muYes = 1;
-
-    OSSL_PARAM initParams[] =
     {
-        OSSL_PARAM_construct_int(OSSL_SIGNATURE_PARAM_MU, &muYes),
-        OSSL_PARAM_construct_end(),
-    };
+        int muYes = 1;
 
-    if (EVP_PKEY_verify_message_init(ctx, NULL, initParams) <= 0)
-    {
-        goto done;
+        OSSL_PARAM initParams[] =
+        {
+            OSSL_PARAM_construct_int(OSSL_SIGNATURE_PARAM_MU, &muYes),
+            OSSL_PARAM_construct_end(),
+        };
+
+        if (EVP_PKEY_verify_message_init(ctx, NULL, initParams) <= 0)
+        {
+            goto done;
+        }
+
+        ret = EVP_PKEY_verify(ctx, sig, Int32ToSizeT(sigLen), mu, Int32ToSizeT(muLen)) == 1;
     }
-
-    ret = EVP_PKEY_verify(ctx, sig, Int32ToSizeT(sigLen), mu, Int32ToSizeT(muLen)) == 1;
 
 done:
     if (ctx != NULL) EVP_PKEY_CTX_free(ctx);
