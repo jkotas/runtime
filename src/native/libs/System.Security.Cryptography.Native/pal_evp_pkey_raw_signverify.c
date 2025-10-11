@@ -118,23 +118,25 @@ int32_t CryptoNative_EvpPKeyVerifyPure(EVP_PKEY *pkey,
         goto done;
     }
 
-    OSSL_PARAM contextParams[] =
     {
-        OSSL_PARAM_construct_end(),
-        OSSL_PARAM_construct_end(),
-    };
+        OSSL_PARAM contextParams[] =
+        {
+            OSSL_PARAM_construct_end(),
+            OSSL_PARAM_construct_end(),
+        };
 
-    if (context)
-    {
-        contextParams[0] = OSSL_PARAM_construct_octet_string(OSSL_SIGNATURE_PARAM_CONTEXT_STRING, (void*)context, Int32ToSizeT(contextLen));
+        if (context)
+        {
+            contextParams[0] = OSSL_PARAM_construct_octet_string(OSSL_SIGNATURE_PARAM_CONTEXT_STRING, (void*)context, Int32ToSizeT(contextLen));
+        }
+
+        if (EVP_PKEY_verify_message_init(ctx, NULL, contextParams) <= 0)
+        {
+            goto done;
+        }
+
+        ret = EVP_PKEY_verify(ctx, sig, Int32ToSizeT(sigLen), msg, Int32ToSizeT(msgLen)) == 1;
     }
-
-    if (EVP_PKEY_verify_message_init(ctx, NULL, contextParams) <= 0)
-    {
-        goto done;
-    }
-
-    ret = EVP_PKEY_verify(ctx, sig, Int32ToSizeT(sigLen), msg, Int32ToSizeT(msgLen)) == 1;
 
 done:
     if (ctx != NULL) EVP_PKEY_CTX_free(ctx);

@@ -181,34 +181,36 @@ int32_t CryptoNative_MLDsaSignExternalMu(EVP_PKEY* pKey,
         goto done;
     }
 
-    int muYes = 1;
-
-    OSSL_PARAM initParams[] =
     {
-        OSSL_PARAM_construct_int(OSSL_SIGNATURE_PARAM_MU, &muYes),
-        OSSL_PARAM_construct_end(),
-    };
+        int muYes = 1;
 
-    if (EVP_PKEY_sign_message_init(ctx, NULL, initParams) <= 0)
-    {
-        goto done;
-    }
-
-    size_t dstLen = Int32ToSizeT(destinationLen);
-
-    if (EVP_PKEY_sign(ctx, destination, &dstLen, mu, Int32ToSizeT(muLen)) == 1)
-    {
-        if (dstLen != Int32ToSizeT(destinationLen))
+        OSSL_PARAM initParams[] =
         {
-            assert(false); // length mismatch
+            OSSL_PARAM_construct_int(OSSL_SIGNATURE_PARAM_MU, &muYes),
+            OSSL_PARAM_construct_end(),
+        };
+
+        if (EVP_PKEY_sign_message_init(ctx, NULL, initParams) <= 0)
+        {
             goto done;
         }
 
-        ret = 1;
-    }
-    else
-    {
-        ret = 0;
+        size_t dstLen = Int32ToSizeT(destinationLen);
+
+        if (EVP_PKEY_sign(ctx, destination, &dstLen, mu, Int32ToSizeT(muLen)) == 1)
+        {
+            if (dstLen != Int32ToSizeT(destinationLen))
+            {
+                assert(false); // length mismatch
+                goto done;
+            }
+
+            ret = 1;
+        }
+        else
+        {
+            ret = 0;
+        }
     }
 
 done:
