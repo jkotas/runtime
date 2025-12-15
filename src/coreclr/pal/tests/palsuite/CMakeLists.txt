@@ -397,8 +397,6 @@ add_executable_clr(paltests
   threading/OpenEventW/test3/childprocess.cpp
   threading/OpenEventW/test3/test3.cpp
   threading/OpenEventW/test5/test5.cpp
-  threading/OpenProcess/test1/childProcess.cpp
-  threading/OpenProcess/test1/test1.cpp
   threading/QueryThreadCycleTime/test1/test1.cpp
   threading/releasesemaphore/test1/test.cpp
   threading/ResetEvent/test1/test1.cpp
