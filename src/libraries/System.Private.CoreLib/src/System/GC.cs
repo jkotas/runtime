@@ -39,10 +39,10 @@ namespace System
 
         private const uint MaxGCMemoryPressureRatio = 10;
 
-        private static int[] s_gcCounts = new int[] { 0, 0, 0 };
+        private static readonly int[] s_gcCounts = new int[3];
 
-        private static long[] s_addPressure = new long[] { 0, 0, 0, 0 };
-        private static long[] s_removePressure = new long[] { 0, 0, 0, 0 };
+        private static readonly long[] s_addPressure = new long[PressureCount];
+        private static readonly long[] s_removePressure = new long[PressureCount];
         private static uint s_iteration;
 
         /// <summary>
@@ -178,26 +178,25 @@ namespace System
             InterlockedAddMemoryPressure(ref s_removePressure[p], bytesAllocated);
         }
 
-#if NATIVEAOT
         [MethodImpl(MethodImplOptions.InternalCall)]
-        [System.Runtime.RuntimeImport("*", "RhGetCurrentObjSize")]
+        [System.Runtime.RuntimeImport("*", "GC_GetCurrentObjSize")]
         private static extern long GetCurrentObjSize();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        [System.Runtime.RuntimeImport("*", "RhGetGCNow")]
+        [System.Runtime.RuntimeImport("*", "GC_GetNow")]
         private static extern long GetNow();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        [System.Runtime.RuntimeImport("*", "RhGetLastGCStartTime")]
+        [System.Runtime.RuntimeImport("*", "GC_GetLastGCDuration")]
         private static extern long GetLastGCStartTime(int generation);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [System.Runtime.RuntimeImport("*", "RhGetLastGCDuration")]
         private static extern long GetLastGCDuration(int generation);
 
-        [LibraryImport("*", EntryPoint = "RhCollect")]
-        private static partial void TriggerCollection(int generation, InternalGCCollectionMode mode);
+        private static void TriggerCollection(int generation, InternalGCCollectionMode mode) => _Collect(generation, (int)mode, lowMemoryPressure: false);
 
+#if NATIVEAOT
         private static void SendEtwAddMemoryPressureEvent(ulong bytesAllocated)
         {
             // ETW events not currently sent for NativeAOT
@@ -210,20 +209,6 @@ namespace System
             _ = bytesAllocated;
         }
 #else
-        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GC_GetCurrentObjSize")]
-        private static partial long GetCurrentObjSize();
-
-        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GC_GetNow")]
-        private static partial long GetNow();
-
-        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GC_GetLastGCStartTime")]
-        private static partial long GetLastGCStartTime(int generation);
-
-        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GC_GetLastGCDuration")]
-        private static partial long GetLastGCDuration(int generation);
-
-        private static void TriggerCollection(int generation, InternalGCCollectionMode mode) => _Collect(generation, (int)mode, lowMemoryPressure: false);
-
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GC_SendEtwAddMemoryPressureEvent")]
         private static partial void SendEtwAddMemoryPressureEvent(ulong bytesAllocated);
 

@@ -4,10 +4,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-
-#if NATIVEAOT
 using System.Runtime;
-#endif
 
 namespace System
 {
@@ -177,56 +174,36 @@ namespace System
             return ModUInt64Internal(dividend, divisor);
         }
 
-#if NATIVEAOT
-        private const string RuntimeLibrary = "*";
-#endif
-
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "DivInt32Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "DivInt32Internal")]
         private static extern int DivInt32Internal(int dividend, int divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "DivUInt32Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "DivUInt32Internal")]
         private static extern uint DivUInt32Internal(uint dividend, uint divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "DivInt64Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "DivInt64Internal")]
         private static extern long DivInt64Internal(long dividend, long divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "DivUInt64Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "DivUInt64Internal")]
         private static extern ulong DivUInt64Internal(ulong dividend, ulong divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "ModInt32Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "ModInt32Internal")]
         private static extern int ModInt32Internal(int dividend, int divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "ModUInt32Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "ModUInt32Internal")]
         private static extern uint ModUInt32Internal(uint dividend, uint divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "ModInt64Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "ModInt64Internal")]
         private static extern long ModInt64Internal(long dividend, long divisor);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-#if NATIVEAOT
-        [RuntimeImport(RuntimeLibrary, "ModUInt64Internal")]
-#endif
+        [RuntimeImport(RuntimeHelpers.RuntimeLibrary, "ModUInt64Internal")]
         private static extern ulong ModUInt64Internal(ulong dividend, ulong divisor);
     }
 }
