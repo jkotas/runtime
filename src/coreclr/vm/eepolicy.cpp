@@ -183,7 +183,7 @@ class CallStackLogger
             return SWA_ABORT;
         }
 
-#ifdef HOST_ANDROID
+#if 1 // def HOST_ANDROID
         // Android tracks native frames for its crash report in PROCCreateCrashReportAndDumpIfEnabled.
         // Indicate them with nullptr MethodDesc.
         *itemPtr = pCF->IsNativeMarker() ? nullptr : pCF->GetFunction();
@@ -200,7 +200,7 @@ class CallStackLogger
 
         MethodDesc* pMD = m_frames[index];
 
-#ifdef HOST_ANDROID
+#if 1 // def HOST_ANDROID
         if (pMD == nullptr)
         {
             SString str(pWordAt);
@@ -262,7 +262,7 @@ public:
             largestCommonLength = 0;
             largestCommonRepeat = 0;
 
-#ifdef HOST_ANDROID
+#if 1 // def HOST_ANDROID
             // Android includes nullptr frames to print native markers, don't start repetition search on those frames.
             if (m_frames[largestCommonStartOffset] == nullptr)
             {
