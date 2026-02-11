@@ -2723,7 +2723,7 @@ static void DoNotOptimize(const void* p)
     (void)p;
 }
 
-#ifdef HOST_ANDROID
+//#ifdef HOST_ANDROID
 #include <minipal/log.h>
 extern "C" void LogCallstackForAndroidNativeCrash() __attribute__((weak));
 
@@ -2744,7 +2744,7 @@ PAL_MarkCrashReportAlreadyLogged()
 {
     InterlockedExchange(&s_crashReportAlreadyLogged, TRUE);
 }
-#endif // HOST_ANDROID
+//#endif // HOST_ANDROID
 
 VOID
 PROCCreateCrashReportAndDumpIfEnabled(int signal, siginfo_t* siginfo, void* context, bool serialize)
@@ -2752,7 +2752,7 @@ PROCCreateCrashReportAndDumpIfEnabled(int signal, siginfo_t* siginfo, void* cont
     // Preserve context pointer to prevent optimization
     DoNotOptimize(&context);
 
-#ifdef HOST_ANDROID
+//#ifdef HOST_ANDROID
     // Android CoreCLR currently does not support CreateDump, so log a crash report until then.
     // Use atomic exchange to ensure only one thread logs the crash report to avoid interleaved output.
     if (InterlockedCompareExchange(&s_crashReportAlreadyLogged, TRUE, FALSE) == FALSE &&
@@ -2761,7 +2761,7 @@ PROCCreateCrashReportAndDumpIfEnabled(int signal, siginfo_t* siginfo, void* cont
         minipal_log_write_fatal(".NET runtime crash report\n");
         LogCallstackForAndroidNativeCrash();
     }
-#endif //HOST_ANDROID
+//#endif //HOST_ANDROID
 
     PROCCreateCrashDumpIfEnabled(signal, siginfo, context, serialize);
 }

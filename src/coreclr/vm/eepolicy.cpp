@@ -931,7 +931,7 @@ int NOINLINE EEPolicy::HandleFatalError(UINT exitCode, UINT_PTR address, LPCWSTR
     return -1;
 }
 
-#ifdef HOST_ANDROID
+//#ifdef HOST_ANDROID
 // Until Android CoreCLR is able to create dumps, provide a way for PROCCreateCrashDumpIfEnabled to log the managed callstack.
 extern "C" void LogCallstackForAndroidNativeCrash()
 {
@@ -943,4 +943,4 @@ extern "C" void LogCallstackForAndroidNativeCrash()
         LogCallstackForLogWorker(pThread, NULL);
     }
 }
-#endif // HOST_ANDROID
+//#endif // HOST_ANDROID
