@@ -265,7 +265,7 @@ namespace System.Security.Cryptography.X509Certificates
         /// </exception>
         public static CertificateRevocationListBuilder LoadPem(ReadOnlySpan<char> currentCrl, out BigInteger currentCrlNumber)
         {
-            foreach ((ReadOnlySpan<char> contents, PemFields fields) in new PemEnumerator(currentCrl))
+            foreach ((ReadOnlySpan<char> contents, PemFields fields) in PemEnumerator.Utf16(currentCrl))
             {
                 if (contents[fields.Label].SequenceEqual(PemLabels.X509CertificateRevocationList))
                 {
@@ -282,8 +282,13 @@ namespace System.Security.Cryptography.X509Certificates
                         out currentCrlNumber,
                         out int bytesConsumed);
 
-                    Debug.Assert(bytesConsumed == bytesWritten);
                     ArrayPool<byte>.Shared.Return(rented);
+
+                    if (bytesConsumed != bytesWritten)
+                    {
+                        throw new CryptographicException(SR.Cryptography_Der_Invalid_Encoding);
+                    }
+
                     return ret;
                 }
             }

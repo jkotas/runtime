@@ -8,7 +8,7 @@
 #include "common.h"
 #include "gcenv.h"
 #include "gcheaputilities.h"
-#include "PalRedhawkCommon.h"
+#include "PalLimitedContext.h"
 #include "CommonMacros.inl"
 #include "GCMemoryHelpers.inl"
 
@@ -31,14 +31,14 @@ FCIMPL2(void *, RhpGcSafeZeroMemory, void * mem, size_t size)
 }
 FCIMPLEND
 
-#if defined(TARGET_X86) || defined(TARGET_AMD64) 
-    // 
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
+    //
     // Memory writes are already ordered
-    // 
-    #define GCHeapMemoryBarrier() 
+    //
+    #define GCHeapMemoryBarrier()
 #else
-    #define GCHeapMemoryBarrier() MemoryBarrier() 
-#endif 
+    #define GCHeapMemoryBarrier() MemoryBarrier()
+#endif
 
 // Move memory, in a way that is compatible with a move onto the heap, but
 // does not require the destination pointer to be on the heap.

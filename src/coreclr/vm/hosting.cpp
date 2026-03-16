@@ -115,7 +115,7 @@ BOOL ClrVirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWO
     // JIT_PatchedCode. Thus, their pages have the same protection, they live
     //  in the same region (and thus, its size is the same).
     //
-    // In EEStartupHelper, when we setup the UEF and then invoke InitJitHelpers1 and InitJitHelpers2,
+    // In EEStartupHelper, when we setup the UEF and then invoke InitJITWriteBarrierHelpers,
     // they perform some optimizations that result in the memory page protection being changed. When
     // the UEF is to be invoked, the OS does the check on the UEF's cached details against the current
     // memory pages. This check used to fail when on 64bit retail builds when JIT_PatchedCode was
@@ -172,7 +172,11 @@ BOOL ClrVirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWO
                 // Ensure that the section following us is having different memory protection
                 MEMORY_BASIC_INFORMATION nextSectionInfo;
                 _ASSERTE(ClrVirtualQuery(pAddressOfFollowingSection, &nextSectionInfo, sizeof(nextSectionInfo)) != 0);
+
+#ifndef FEATURE_SATORI_GC
+                // Satori does not copy barriers and does not change the protection thus this assert is triggered.
                 _ASSERTE(nextSectionInfo.Protect != uefInfo.Protect);
+#endif
 
                 // save the memory protection details
                 s_dwProtection = uefInfo.Protect;
@@ -315,7 +319,7 @@ CRITSEC_COOKIE ClrCreateCriticalSection(CrstType crstType, CrstFlags flags) {
     EX_CATCH
     {
     }
-    EX_END_CATCH(SwallowAllExceptions);
+    EX_END_CATCH
 
     // Note: we'll return NULL if the create fails. That's a true NULL, not a poisoned NULL.
     return ret;
@@ -350,8 +354,6 @@ DEBUG_NOINLINE void ClrEnterCriticalSection(CRITSEC_COOKIE cookie) {
     }
     CONTRACTL_END;
 
-    ANNOTATION_SPECIAL_HOLDER_CALLER_NEEDS_DYNAMIC_CONTRACT;
-
     Crst *pCrst = CookieToCrst(cookie);
     _ASSERTE(pCrst);
 
@@ -366,8 +368,6 @@ DEBUG_NOINLINE void ClrLeaveCriticalSection(CRITSEC_COOKIE cookie)
         GC_NOTRIGGER;
     }
     CONTRACTL_END;
-
-    ANNOTATION_SPECIAL_HOLDER_CALLER_NEEDS_DYNAMIC_CONTRACT;
 
     Crst *pCrst = CookieToCrst(cookie);
     _ASSERTE(pCrst);

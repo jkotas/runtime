@@ -1,6 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// __forceinline implementation of the Interlocked class methods
+// FORCEINLINE implementation of the Interlocked class methods
 //
 
 #ifndef __GCENV_INTERLOCKED_INL__
@@ -11,7 +11,7 @@
 #endif // _MSC_VER
 
 #ifndef _MSC_VER
-__forceinline void Interlocked::InterlockedOperationBarrier()
+FORCEINLINE void Interlocked::InterlockedOperationBarrier()
 {
 #if defined(HOST_ARM64) || defined(HOST_LOONGARCH64) || defined(HOST_RISCV64)
     // See PAL_InterlockedOperationBarrier() in the PAL
@@ -26,7 +26,7 @@ __forceinline void Interlocked::InterlockedOperationBarrier()
 // Return:
 //  The resulting incremented value
 template <typename T>
-__forceinline T Interlocked::Increment(T volatile *addend)
+FORCEINLINE T Interlocked::Increment(T volatile *addend)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -39,7 +39,7 @@ __forceinline T Interlocked::Increment(T volatile *addend)
 }
 
 template <>
-__forceinline size_t Interlocked::Increment(size_t volatile* addend)
+FORCEINLINE size_t Interlocked::Increment(size_t volatile* addend)
 {
 #ifdef _MSC_VER
     return (size_t)_InterlockedIncrement64((volatile long long*)addend);
@@ -56,7 +56,7 @@ __forceinline size_t Interlocked::Increment(size_t volatile* addend)
 // Return:
 //  The resulting decremented value
 template <typename T>
-__forceinline T Interlocked::Decrement(T volatile *addend)
+FORCEINLINE T Interlocked::Decrement(T volatile *addend)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -69,7 +69,7 @@ __forceinline T Interlocked::Decrement(T volatile *addend)
 }
 
 template <>
-__forceinline size_t Interlocked::Decrement(size_t volatile* addend)
+FORCEINLINE size_t Interlocked::Decrement(size_t volatile* addend)
 {
 #ifdef _MSC_VER
     return (size_t)_InterlockedDecrement64((volatile long long*)addend);
@@ -87,7 +87,7 @@ __forceinline size_t Interlocked::Decrement(size_t volatile* addend)
 // Return:
 //  The previous value of the destination
 template <typename T>
-__forceinline T Interlocked::Exchange(T volatile *destination, T value)
+FORCEINLINE T Interlocked::Exchange(T volatile *destination, T value)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -100,7 +100,7 @@ __forceinline T Interlocked::Exchange(T volatile *destination, T value)
 }
 
 template <>
-__forceinline int8_t Interlocked::Exchange<int8_t>(int8_t volatile* destination, int8_t value)
+FORCEINLINE int8_t Interlocked::Exchange<int8_t>(int8_t volatile* destination, int8_t value)
 {
 #ifdef _MSC_VER
     return (int8_t)_InterlockedExchange8((char*)destination, value);
@@ -120,7 +120,7 @@ __forceinline int8_t Interlocked::Exchange<int8_t>(int8_t volatile* destination,
 // Return:
 //  The original value of the destination
 template <typename T>
-__forceinline T Interlocked::CompareExchange(T volatile *destination, T exchange, T comparand)
+FORCEINLINE T Interlocked::CompareExchange(T volatile *destination, T exchange, T comparand)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -133,7 +133,7 @@ __forceinline T Interlocked::CompareExchange(T volatile *destination, T exchange
 }
 
 template <>
-__forceinline size_t Interlocked::CompareExchange<size_t>(size_t volatile * destination, size_t exchange, size_t comparand)
+FORCEINLINE size_t Interlocked::CompareExchange<size_t>(size_t volatile * destination, size_t exchange, size_t comparand)
 {
 #ifdef _MSC_VER
     return _InterlockedCompareExchange64((volatile long long*)destination, exchange, comparand);
@@ -145,7 +145,7 @@ __forceinline size_t Interlocked::CompareExchange<size_t>(size_t volatile * dest
 }
 
 template <>
-__forceinline int8_t Interlocked::CompareExchange<int8_t>(int8_t volatile* destination, int8_t exchange, int8_t comparand)
+FORCEINLINE int8_t Interlocked::CompareExchange<int8_t>(int8_t volatile* destination, int8_t exchange, int8_t comparand)
 {
 #ifdef _MSC_VER
     return (int8_t)_InterlockedCompareExchange8((char*)destination, exchange, comparand);
@@ -157,7 +157,7 @@ __forceinline int8_t Interlocked::CompareExchange<int8_t>(int8_t volatile* desti
 }
 
 template <>
-__forceinline uint8_t Interlocked::CompareExchange<uint8_t>(uint8_t volatile* destination, uint8_t exchange, uint8_t comparand)
+FORCEINLINE uint8_t Interlocked::CompareExchange<uint8_t>(uint8_t volatile* destination, uint8_t exchange, uint8_t comparand)
 {
 #ifdef _MSC_VER
     return (uint8_t)_InterlockedCompareExchange8((char*)destination, exchange, comparand);
@@ -175,7 +175,7 @@ __forceinline uint8_t Interlocked::CompareExchange<uint8_t>(uint8_t volatile* de
 // Return:
 //  The previous value of the addend
 template <typename T>
-__forceinline T Interlocked::ExchangeAdd(T volatile *addend, T value)
+FORCEINLINE T Interlocked::ExchangeAdd(T volatile *addend, T value)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -188,7 +188,7 @@ __forceinline T Interlocked::ExchangeAdd(T volatile *addend, T value)
 }
 
 template <typename T>
-__forceinline T Interlocked::ExchangeAdd64(T volatile* addend, T value)
+FORCEINLINE T Interlocked::ExchangeAdd64(T volatile* addend, T value)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(int64_t) == sizeof(T), "Size of LONGLONG must be the same as size of T");
@@ -201,7 +201,7 @@ __forceinline T Interlocked::ExchangeAdd64(T volatile* addend, T value)
 }
 
 template <typename T>
-__forceinline T Interlocked::ExchangeAddPtr(T volatile* addend, T value)
+FORCEINLINE T Interlocked::ExchangeAddPtr(T volatile* addend, T value)
 {
 #ifdef _MSC_VER
 #ifdef HOST_64BIT
@@ -223,7 +223,7 @@ __forceinline T Interlocked::ExchangeAddPtr(T volatile* addend, T value)
 //  destination - the first operand and the destination
 //  value       - second operand
 template <typename T>
-__forceinline void Interlocked::And(T volatile *destination, T value)
+FORCEINLINE void Interlocked::And(T volatile *destination, T value)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -239,7 +239,7 @@ __forceinline void Interlocked::And(T volatile *destination, T value)
 //  destination - the first operand and the destination
 //  value       - second operand
 template <typename T>
-__forceinline void Interlocked::Or(T volatile *destination, T value)
+FORCEINLINE void Interlocked::Or(T volatile *destination, T value)
 {
 #ifdef _MSC_VER
     static_assert(sizeof(long) == sizeof(T), "Size of long must be the same as size of T");
@@ -257,7 +257,7 @@ __forceinline void Interlocked::Or(T volatile *destination, T value)
 // Return:
 //  The previous value of the destination
 template <typename T>
-__forceinline T Interlocked::ExchangePointer(T volatile * destination, T value)
+FORCEINLINE T Interlocked::ExchangePointer(T volatile * destination, T value)
 {
 #ifdef _MSC_VER
 #ifdef HOST_64BIT
@@ -273,7 +273,7 @@ __forceinline T Interlocked::ExchangePointer(T volatile * destination, T value)
 }
 
 template <typename T>
-__forceinline T Interlocked::ExchangePointer(T volatile * destination, std::nullptr_t value)
+FORCEINLINE T Interlocked::ExchangePointer(T volatile * destination, std::nullptr_t value)
 {
 #ifdef _MSC_VER
 #ifdef HOST_64BIT
@@ -297,7 +297,7 @@ __forceinline T Interlocked::ExchangePointer(T volatile * destination, std::null
 // Return:
 //  The original value of the destination
 template <typename T>
-__forceinline T Interlocked::CompareExchangePointer(T volatile *destination, T exchange, T comparand)
+FORCEINLINE T Interlocked::CompareExchangePointer(T volatile *destination, T exchange, T comparand)
 {
 #ifdef _MSC_VER
 #ifdef HOST_64BIT
@@ -313,7 +313,7 @@ __forceinline T Interlocked::CompareExchangePointer(T volatile *destination, T e
 }
 
 template <typename T>
-__forceinline T Interlocked::CompareExchangePointer(T volatile *destination, T exchange, std::nullptr_t comparand)
+FORCEINLINE T Interlocked::CompareExchangePointer(T volatile *destination, T exchange, std::nullptr_t comparand)
 {
 #ifdef _MSC_VER
 #ifdef HOST_64BIT

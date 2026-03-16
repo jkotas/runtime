@@ -23,9 +23,20 @@ namespace System.Threading
             private static void GateThreadStart()
             {
                 bool disableStarvationDetection =
-                    AppContextConfigHelper.GetBooleanConfig("System.Threading.ThreadPool.DisableStarvationDetection", false);
+                    AppContextConfigHelper.GetBooleanComPlusOrDotNetConfig("System.Threading.ThreadPool.DisableStarvationDetection", "ThreadPool_DisableStarvationDetection", false);
                 bool debuggerBreakOnWorkStarvation =
-                    AppContextConfigHelper.GetBooleanConfig("System.Threading.ThreadPool.DebugBreakOnWorkerStarvation", false);
+                    AppContextConfigHelper.GetBooleanComPlusOrDotNetConfig("System.Threading.ThreadPool.DebugBreakOnWorkerStarvation", "ThreadPool_DebugBreakOnWorkerStarvation", false);
+
+                // CPU utilization is updated when the gate thread performs periodic activities (GateActivitiesPeriodMs), so
+                // that would also affect the actual interval. Set to 0 to disable using CPU utilization and have components
+                // behave as though CPU utilization is low. The default value of 1 causes CPU utilization to be updated whenever
+                // the gate thread performs periodic activities.
+                int cpuUtilizationIntervalMs =
+                    AppContextConfigHelper.GetInt32Config(
+                        "System.Threading.ThreadPool.CpuUtilizationIntervalMs",
+                        "DOTNET_ThreadPool_CpuUtilizationIntervalMs",
+                        defaultValue: 1,
+                        allowNegative: false);
 
                 // CPU utilization is updated when the gate thread performs periodic activities (GateActivitiesPeriodMs), so
                 // that would also affect the actual interval. Set to 0 to disable using CPU utilization and have components
@@ -132,7 +143,7 @@ namespace System.Threading
 
                         if (!disableStarvationDetection &&
                             threadPoolInstance._pendingBlockingAdjustment == PendingBlockingAdjustment.None &&
-                            threadPoolInstance._separated.numRequestedWorkers > 0 &&
+                            threadPoolInstance._separated._hasOutstandingThreadRequest != 0 &&
                             SufficientDelaySinceLastDequeue(threadPoolInstance))
                         {
                             bool addWorker = false;
@@ -187,7 +198,7 @@ namespace System.Threading
                             }
                         }
 
-                        if (threadPoolInstance._separated.numRequestedWorkers <= 0 &&
+                        if (threadPoolInstance._separated._hasOutstandingThreadRequest == 0 &&
                             threadPoolInstance._pendingBlockingAdjustment == PendingBlockingAdjustment.None &&
                             Interlocked.Decrement(ref threadPoolInstance._separated.gateThreadRunningState) <= GetRunningStateForNumRuns(0))
                         {
@@ -208,7 +219,7 @@ namespace System.Threading
             // in deciding "too long"
             private static bool SufficientDelaySinceLastDequeue(PortableThreadPool threadPoolInstance)
             {
-                uint delay = (uint)(Environment.TickCount - threadPoolInstance._separated.lastDequeueTime);
+                uint delay = (uint)(Environment.TickCount - threadPoolInstance._separated.lastDispatchTime);
                 uint minimumDelay;
                 if (threadPoolInstance._cpuUtilization < CpuUtilizationLow)
                 {

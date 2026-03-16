@@ -17,6 +17,7 @@
 #if !defined(DACCESS_COMPILE)
 
 #include "frameinfo.h"
+#include "executioncontrol.h"
 
 /* ------------------------------------------------------------------------- *
  * Forward declarations
@@ -312,7 +313,11 @@ public:
     UINT_PTR                RipTargetFixup;
 #endif
 
+    const InstructionAttribute& GetInstructionAttrib() { return m_instrAttrib; }
+    void SetInstructionAttrib(const InstructionAttribute& instrAttrib) { m_instrAttrib = instrAttrib; }
+
 private:
+    InstructionAttribute   m_instrAttrib;      // info about the instruction being skipped over
     const static DWORD SentinelValue = 0xffffffff;
     LONG    m_refCount;
 };
@@ -550,9 +555,12 @@ public:
     // Is this patch at a position at which it's safe to take a stack?
     bool IsSafeForStackTrace();
 
+#ifndef DACCESS_COMPILE
 #ifndef FEATURE_EMULATE_SINGLESTEP
     // gets a pointer to the shared buffer
     SharedPatchBypassBuffer* GetOrCreateSharedPatchBypassBuffer();
+
+    void CopyInstructionBlock(BYTE *to, const BYTE* from);
 
     // entry point for general initialization when the controller is being created
     void Initialize()
@@ -567,6 +575,7 @@ public:
             m_pSharedPatchBypassBuffer->Release();
     }
 #endif // !FEATURE_EMULATE_SINGLESTEP
+#endif // !DACCESS_COMPILE
 
     void LogInstance()
     {
@@ -592,6 +601,13 @@ public:
 };
 
 typedef DPTR(DebuggerControllerPatch) PTR_DebuggerControllerPatch;
+
+// Determines whether a breakpoint patch should be bound to a given MethodDesc.
+// When pMethodDescFilter is NULL, the default filtering policy is applied which
+// excludes async thunk methods (they should not have user breakpoints bound to them).
+// When pMethodDescFilter is non-NULL, the patch is explicitly targeting that specific
+// MethodDesc and no default filtering is applied.
+bool ShouldBindPatchToMethodDesc(MethodDesc* pMD, MethodDesc* pMethodDescFilter);
 
 /* class DebuggerPatchTable:  This is the table that contains
  *  information about the patches (breakpoints) maintained by the
@@ -1039,7 +1055,7 @@ class DebuggerController
     //right side needs to read
     friend class Debugger; // So Debugger can lock, use, unlock the patch
     // table in MapAndBindFunctionBreakpoints
-    friend void Debugger::UnloadModule(Module* pRuntimeModule, AppDomain *pAppDomain);
+    friend void Debugger::UnloadModule(Module* pRuntimeModule);
 
     //
     // Static functionality
@@ -1094,6 +1110,8 @@ class DebuggerController
     // pIP is the ip right after the prolog of the method we've entered.
     // fp is the frame pointer for that method.
     static void DispatchMethodEnter(void * pIP, FramePointer fp);
+    static void DispatchMulticastDelegate(DELEGATEREF pbDel, INT32 countDel);
+    static void DispatchExternalMethodFixup(PCODE addr);
 
 
     // Delete any patches that exist for a specific module and optionally a specific AppDomain.
@@ -1213,7 +1231,7 @@ private:
     static void ApplyTraceFlag(Thread *thread);
     static void UnapplyTraceFlag(Thread *thread);
 
-    virtual void DebuggerDetachClean();
+    virtual bool DebuggerDetachClean();
 
   public:
     static const BYTE *GetILPrestubDestination(const BYTE *prestub);
@@ -1314,6 +1332,12 @@ public:
     void EnableMethodEnter();
     void DisableMethodEnter();
 
+    void EnableMultiCastDelegate();
+    void DisableMultiCastDelegate();
+
+    void EnableExternalMethodFixup();
+    void DisableExternalMethodFixup();
+
     void DisableAll();
 
     virtual DEBUGGER_CONTROLLER_TYPE GetDCType( void )
@@ -1413,6 +1437,9 @@ public:
                                     const BYTE * ip,
                                     FramePointer fp);
 
+    virtual void TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount);
+
+    virtual void TriggerExternalMethodFixup(PCODE target);
 
     // Send the managed debug event.
     // This is called after TriggerPatch/TriggerSingleStep actually trigger.
@@ -1452,6 +1479,8 @@ private:
     int                 m_eventQueuedCount;
     bool                m_deleted;
     bool                m_fEnableMethodEnter;
+    bool                m_multicastDelegateHelper;
+    bool                m_externalMethodFixup;
 
 #endif // !DACCESS_COMPILE
 };
@@ -1502,11 +1531,9 @@ class DebuggerPatchSkip : public DebuggerController
     virtual DEBUGGER_CONTROLLER_TYPE GetDCType(void)
         { return DEBUGGER_CONTROLLER_PATCH_SKIP; }
 
-    void CopyInstructionBlock(BYTE *to, const BYTE* from);
-
     void DecodeInstruction(CORDB_ADDRESS_TYPE *code);
 
-    void DebuggerDetachClean();
+    bool DebuggerDetachClean();
 
     CORDB_ADDRESS_TYPE      *m_address;
     int                      m_iOrigDisp;        // the original displacement of a relative call or jump
@@ -1529,12 +1556,12 @@ public:
 
 #endif // !FEATURE_EMULATE_SINGLESTEP
 
-    BOOL IsInPlaceSingleStep() 
-    { 
+    BOOL IsInPlaceSingleStep()
+    {
 #ifdef OUT_OF_PROCESS_SETTHREADCONTEXT
 #ifndef FEATURE_EMULATE_SINGLESTEP
         // only in-place single steps over call intructions are supported at this time
-        _ASSERTE(m_instrAttrib.m_fIsCall);
+        _ASSERTE(!m_fInPlaceSS || m_instrAttrib.m_fIsCall);
         return m_fInPlaceSS;
 #else
 #error only non-emulated single-steps with OUT_OF_PROCESS_SETTHREADCONTEXT enabled are supported
@@ -1689,7 +1716,8 @@ protected:
 
 
     virtual void TriggerMethodEnter(Thread * thread, DebuggerJitInfo * dji, const BYTE * ip, FramePointer fp);
-
+    void TriggerMulticastDelegate(DELEGATEREF pDel, INT32 delegateCount);
+    void TriggerExternalMethodFixup(PCODE target);
 
     void ResetRange();
 
@@ -1726,7 +1754,6 @@ protected:
     COR_DEBUG_STEP_RANGE *  m_range; // Ranges for active steppers are always in native offsets.
 
     SIZE_T                  m_rangeCount;
-    SIZE_T                  m_realRangeCount; // @todo - delete b/c only used for CodePitching & Old-Enc
 
     // The original step intention.
     // As the stepper moves through code, it may change its other members.
@@ -1748,11 +1775,9 @@ protected:
     // This is the only frame that the ranges are valid in.
     FramePointer            m_fp;
 
-#if defined(FEATURE_EH_FUNCLETS)
     // This frame pointer is used for funclet stepping.
     // See IsRangeAppropriate() for more information.
     FramePointer            m_fpParentMethod;
-#endif // FEATURE_EH_FUNCLETS
 
     //m_fpException is 0 if we haven't stepped into an exception,
     //  and is ignored.  If we get a TriggerUnwind while mid-step, we note

@@ -1,3 +1,3 @@
-# Satori GC
+# Experimenting with dotnet runtime.
 
-Fork of vsadov/satori for testing and experimentation
+Once in a while I have an idea and I want to give it a try.

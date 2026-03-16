@@ -23,7 +23,7 @@ namespace System.Reflection.Emit
 
         internal void GetCallableMethod(RuntimeModule module, DynamicMethod dm)
         {
-            dm._methodHandle = ModuleHandle.GetDynamicMethod(dm,
+            dm._methodHandle = ModuleHandle.GetDynamicMethod(
                                           module,
                                           m_methodBuilder.Name,
                                           (byte[])m_scope[m_methodSigToken]!,
@@ -193,17 +193,23 @@ namespace System.Reflection.Emit
             // If there is a non-void return type, push one.
             if (returnType != typeof(void))
                 stackchange++;
+
             // Pop off arguments if any.
             if (parameterTypes != null)
                 stackchange -= parameterTypes.Length;
+
             // Pop off vararg arguments.
             if (optionalParameterTypes != null)
                 stackchange -= optionalParameterTypes.Length;
-            // Pop the this parameter if the method has a this parameter.
-            if ((callingConvention & CallingConventions.HasThis) == CallingConventions.HasThis)
+
+            // Pop the this parameter if the method has an implicit this parameter.
+            if ((callingConvention & CallingConventions.HasThis) == CallingConventions.HasThis &&
+                (callingConvention & CallingConventions.ExplicitThis) == 0)
                 stackchange--;
+
             // Pop the native function pointer.
             stackchange--;
+
             UpdateStackSize(OpCodes.Calli, stackchange);
 
             int token = GetTokenForSig(sig.GetSignature(true));
@@ -852,16 +858,16 @@ namespace System.Reflection.Emit
             m_scope = new DynamicScope();
             m_method = method;
             m_methodSignature = m_scope.GetTokenFor(methodSignature);
-            m_exceptions = Array.Empty<byte>();
-            m_code = Array.Empty<byte>();
-            m_localSignature = Array.Empty<byte>();
+            m_exceptions = [];
+            m_code = [];
+            m_localSignature = [];
         }
         #endregion
 
         #region Internal Methods
         internal void GetCallableMethod(RuntimeModule module, DynamicMethod dm)
         {
-            dm._methodHandle = ModuleHandle.GetDynamicMethod(dm,
+            dm._methodHandle = ModuleHandle.GetDynamicMethod(
                 module, m_method.Name, (byte[])m_scope[m_methodSignature]!, new DynamicResolver(this));
         }
 
@@ -877,7 +883,7 @@ namespace System.Reflection.Emit
 
         public void SetCode(byte[]? code, int maxStackSize)
         {
-            m_code = (code != null) ? (byte[])code.Clone() : Array.Empty<byte>();
+            m_code = (code != null) ? (byte[])code.Clone() : [];
             m_maxStackSize = maxStackSize;
         }
 
@@ -894,7 +900,7 @@ namespace System.Reflection.Emit
 
         public void SetExceptions(byte[]? exceptions)
         {
-            m_exceptions = (exceptions != null) ? (byte[])exceptions.Clone() : Array.Empty<byte>();
+            m_exceptions = (exceptions != null) ? (byte[])exceptions.Clone() : [];
         }
 
         [CLSCompliant(false)]
@@ -910,7 +916,7 @@ namespace System.Reflection.Emit
 
         public void SetLocalSignature(byte[]? localSignature)
         {
-            m_localSignature = (localSignature != null) ? (byte[])localSignature.Clone() : Array.Empty<byte>();
+            m_localSignature = (localSignature != null) ? (byte[])localSignature.Clone() : [];
         }
 
         [CLSCompliant(false)]

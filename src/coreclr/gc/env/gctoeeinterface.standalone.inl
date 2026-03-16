@@ -59,6 +59,11 @@ namespace standalone
             return ::GCToEEInterface::RefCountedHandleCallbacks(pObject);
         }
 
+        void TriggerClientBridgeProcessing(MarkCrossReferencesArgs* args)
+        {
+            return ::GCToEEInterface::TriggerClientBridgeProcessing(args);
+        }
+
         void SyncBlockCacheWeakPtrScan(HANDLESCANPROC scanProc, uintptr_t lp1, uintptr_t lp2)
         {
             ::GCToEEInterface::SyncBlockCacheWeakPtrScan(scanProc, lp1, lp2);
@@ -267,6 +272,11 @@ namespace standalone
         void LogErrorToHost(const char *message)
         {
             ::GCToEEInterface::LogErrorToHost(message);
+        }
+
+        uint64_t GetThreadOSThreadId(Thread* thread)
+        {
+            return ::GCToEEInterface::GetThreadOSThreadId(thread);
         }
     };
 }

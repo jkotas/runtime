@@ -1,14 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- Needed for GCStressIncompatible -->
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <CLRTestExecutionArguments />
     <GCStressIncompatible>true</GCStressIncompatible>
     <IsLongRunningGCTest>true</IsLongRunningGCTest>
+    <!-- Satori NYI -->
+    <DisableProjectBuild>true</DisableProjectBuild>
   </PropertyGroup>
   <PropertyGroup>
     <DebugType>PdbOnly</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="NoGC.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(TestLibraryProjectPath)" />
   </ItemGroup>
 </Project>
