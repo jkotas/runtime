@@ -3731,6 +3731,11 @@ void SaveManagedCommandLine(LPCWSTR pwzAssemblyPath, int argc, LPCWSTR *argv)
         Append_Next_Item(&pCursor, &remainingLen, argv[i], moreArgs);
     }
 
+    {
+        SString commandLine(pNewCommandLine);
+        printf("Constructed command line: >>>%s<<<\n", commandLine.GetUTF8());
+    }
+
     s_pCommandLine = pNewCommandLine;
 #endif
 }
