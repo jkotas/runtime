@@ -12,16 +12,6 @@ using Microsoft.Win32.SafeHandles;
 
 namespace System.Threading
 {
-    internal readonly struct ThreadHandle
-    {
-        private readonly IntPtr _ptr;
-
-        internal ThreadHandle(IntPtr pThread)
-        {
-            _ptr = pThread;
-        }
-    }
-
     public sealed partial class Thread
     {
         /*=========================================================================
@@ -42,6 +32,7 @@ namespace System.Threading
         private IntPtr _DONT_USE_InternalThread;
         private int _priority;
         private int _managedThreadId; // Debugger depends on the exact name of this field.
+        private int _internalThreadRefState;
 
         // This is used for a quick check on thread pool threads after running a work item to determine if the name, background
         // state, or priority were changed by the work item, and if so to reset it. Other threads may also change some of those,
@@ -63,28 +54,15 @@ namespace System.Threading
             get => _managedThreadId;
         }
 
-        /// <summary>Returns handle for interop with EE. The handle is guaranteed to be non-null.</summary>
-        internal ThreadHandle GetNativeHandle()
-        {
-            IntPtr thread = _DONT_USE_InternalThread;
-
-            // This should never happen under normal circumstances.
-            if (thread == IntPtr.Zero)
-            {
-                throw new ThreadStateException(SR.Argument_InvalidHandle);
-            }
-
-            return new ThreadHandle(thread);
-        }
-
         private unsafe void StartCore()
         {
             lock (this)
             {
                 fixed (char* pThreadName = _name)
                 {
+                    Thread _this = this;
                     Exception? exception = null;
-                    if (StartInternal(GetNativeHandle(), _startHelper?._maxStackSize ?? 0, _priority, _isThreadPool ? Interop.BOOL.TRUE : Interop.BOOL.FALSE, pThreadName, ObjectHandleOnStack.Create(ref exception)) == Interop.BOOL.FALSE)
+                    if (StartInternal(ObjectHandleOnStack.Create(ref _this), _startHelper?._maxStackSize ?? 0, _priority, _isThreadPool ? Interop.BOOL.TRUE : Interop.BOOL.FALSE, pThreadName, ObjectHandleOnStack.Create(ref exception)) == Interop.BOOL.FALSE)
                     {
                         throw new ThreadStartException(exception);
                     }
@@ -93,7 +71,7 @@ namespace System.Threading
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Start")]
-        private static unsafe partial Interop.BOOL StartInternal(ThreadHandle t, int stackSize, int priority, Interop.BOOL isThreadPool, char* pThreadName, ObjectHandleOnStack exception);
+        private static unsafe partial Interop.BOOL StartInternal(ObjectHandleOnStack t, int stackSize, int priority, Interop.BOOL isThreadPool, char* pThreadName, ObjectHandleOnStack exception);
 
         [UnmanagedCallersOnly]
         private static unsafe void StartCallback(Thread* pThread)
@@ -168,19 +146,25 @@ namespace System.Threading
         private static partial void Initialize(ObjectHandleOnStack thread);
 
         /// <summary>Clean up the thread when it goes away.</summary>
-        ~Thread() => InternalFinalize(); // Delegate to the unmanaged portion.
+        ~Thread()
+        {
+            if (!InternalFinalize())
+            {
+                GC.ReRegisterForFinalize(this);
+            }
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern void InternalFinalize();
+        private extern bool InternalFinalize();
 
         private void ThreadNameChanged(string? value)
         {
-            InformThreadNameChange(GetNativeHandle(), value, value?.Length ?? 0);
-            GC.KeepAlive(this);
+            Thread _this = this;
+            InformThreadNameChange(ObjectHandleOnStack.Create(ref _this), value, value?.Length ?? 0);
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_InformThreadNameChange", StringMarshalling = StringMarshalling.Utf16)]
-        private static partial void InformThreadNameChange(ThreadHandle t, string? name, int len);
+        private static partial void InformThreadNameChange(ObjectHandleOnStack t, string? name, int len);
 
         /// <summary>Returns true if the thread has been started and is not dead.</summary>
         public bool IsAlive => (ThreadState & (ThreadState.Unstarted | ThreadState.Stopped | ThreadState.Aborted)) == 0;
@@ -198,8 +182,8 @@ namespace System.Threading
                     throw new ThreadStateException(SR.ThreadState_Dead_State);
                 }
 
-                Interop.BOOL res = GetIsBackground(GetNativeHandle());
-                GC.KeepAlive(this);
+                Thread _this = this;
+                Interop.BOOL res = GetIsBackground(ObjectHandleOnStack.Create(ref _this));
                 return res != Interop.BOOL.FALSE;
             }
             set
@@ -209,8 +193,8 @@ namespace System.Threading
                     throw new ThreadStateException(SR.ThreadState_Dead_State);
                 }
 
-                SetIsBackground(GetNativeHandle(), value ? Interop.BOOL.TRUE : Interop.BOOL.FALSE);
-                GC.KeepAlive(this);
+                Thread _this = this;
+                SetIsBackground(ObjectHandleOnStack.Create(ref _this), value ? Interop.BOOL.TRUE : Interop.BOOL.FALSE);
                 if (!value)
                 {
                     _mayNeedResetForThreadPool = true;
@@ -218,12 +202,11 @@ namespace System.Threading
             }
         }
 
-        [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetIsBackground")]
-        private static partial Interop.BOOL GetIsBackground(ThreadHandle t);
+        private static partial Interop.BOOL GetIsBackground(ObjectHandleOnStack t);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_SetIsBackground")]
-        private static partial void SetIsBackground(ThreadHandle t, Interop.BOOL value);
+        private static partial void SetIsBackground(ObjectHandleOnStack t, Interop.BOOL value);
 
         /// <summary>Returns true if the thread is a threadpool thread.</summary>
         public bool IsThreadPoolThread
@@ -251,7 +234,6 @@ namespace System.Threading
         }
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_SetPriority")]
-        [return: MarshalAs(UnmanagedType.Bool)]
         private static partial void SetPriority(ObjectHandleOnStack thread, int priority);
 
         /// <summary>Returns the priority of the thread.</summary>
@@ -289,15 +271,13 @@ namespace System.Threading
                     return ThreadState.Stopped;
                 }
 
-                var state = (ThreadState)GetThreadState(GetNativeHandle());
-                GC.KeepAlive(this);
-                return state;
+                Thread _this = this;
+                return (ThreadState)GetThreadState(ObjectHandleOnStack.Create(ref _this));
             }
         }
 
-        [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetThreadState")]
-        private static partial int GetThreadState(ThreadHandle t);
+        private static partial int GetThreadState(ObjectHandleOnStack t);
 
         internal unsafe void SetWaitSleepJoinState()
         {
@@ -391,13 +371,12 @@ namespace System.Threading
 #if FEATURE_COMINTEROP
         public void DisableComObjectEagerCleanup()
         {
-            DisableComObjectEagerCleanup(GetNativeHandle());
-            GC.KeepAlive(this);
+            Thread _this = this;
+            DisableComObjectEagerCleanup(ObjectHandleOnStack.Create(ref _this));
         }
 
-        [SuppressGCTransition]
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_DisableComObjectEagerCleanup")]
-        private static partial void DisableComObjectEagerCleanup(ThreadHandle t);
+        private static partial void DisableComObjectEagerCleanup(ObjectHandleOnStack t);
 #else // !FEATURE_COMINTEROP
         public void DisableComObjectEagerCleanup() { }
 #endif // FEATURE_COMINTEROP
@@ -412,23 +391,22 @@ namespace System.Threading
 #if TARGET_UNIX || TARGET_BROWSER || TARGET_WASI
             WaitSubsystem.Interrupt(this);
 #else
-            Interrupt(GetNativeHandle());
-            GC.KeepAlive(this);
+            Thread _this = this;
+            Interrupt(ObjectHandleOnStack.Create(ref _this));
 #endif
         }
 
 #if TARGET_WINDOWS
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_Interrupt")]
-        private static partial void Interrupt(ThreadHandle t);
+        private static partial void Interrupt(ObjectHandleOnStack t);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "ThreadNative_GetOSHandle")]
-        private static partial SafeWaitHandle GetOSHandle(ThreadHandle t);
+        private static partial SafeWaitHandle GetOSHandle(ObjectHandleOnStack t);
 
         private SafeWaitHandle GetJoinHandle()
         {
-            SafeWaitHandle handle = GetOSHandle(GetNativeHandle());
-            GC.KeepAlive(this);
-            return handle;
+            Thread _this = this;
+            return GetOSHandle(ObjectHandleOnStack.Create(ref _this));
         }
 #else
         private volatile ManualResetEvent? _joinEvent;

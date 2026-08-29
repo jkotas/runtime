@@ -1200,6 +1200,7 @@ private:
 
     // We need to cache the thread id in managed code for perf reasons.
     INT32         m_ManagedThreadId;
+    LONG          m_InternalThreadRefState;
 
     // Only used by managed code, see comment there
     bool          m_MayNeedResetForThreadPool;
@@ -1228,6 +1229,55 @@ public:
     {
         LIMITED_METHOD_CONTRACT;
         m_ManagedThreadId = id;
+    }
+
+    bool TryAcquireInternal(Thread** thread)
+    {
+        LIMITED_METHOD_CONTRACT;
+
+        const LONG FinalizationRequested = (LONG)0x80000000;
+        LONG state = VolatileLoad(&m_InternalThreadRefState);
+        while ((state & FinalizationRequested) == 0)
+        {
+            LONG newState = state + 1;
+            if (InterlockedCompareExchange(&m_InternalThreadRefState, newState, state) == state)
+            {
+                *thread = m_InternalThread;
+                if (*thread != nullptr)
+                    return true;
+
+                ReleaseInternal();
+                return false;
+            }
+
+            state = VolatileLoad(&m_InternalThreadRefState);
+        }
+
+        return false;
+    }
+
+    void ReleaseInternal()
+    {
+        LIMITED_METHOD_CONTRACT;
+
+        const LONG ActiveCountMask = 0x7fffffff;
+        _ASSERTE((VolatileLoad(&m_InternalThreadRefState) & ActiveCountMask) != 0);
+        InterlockedDecrement(&m_InternalThreadRefState);
+    }
+
+    bool BeginFinalization()
+    {
+        LIMITED_METHOD_CONTRACT;
+
+        const LONG FinalizationRequested = (LONG)0x80000000;
+        const LONG ActiveCountMask = 0x7fffffff;
+        LONG state = VolatileLoad(&m_InternalThreadRefState);
+        while (InterlockedCompareExchange(&m_InternalThreadRefState, state | FinalizationRequested, state) != state)
+        {
+            state = VolatileLoad(&m_InternalThreadRefState);
+        }
+
+        return (state & ActiveCountMask) == 0;
     }
 
     STRINGREF GetName() {
