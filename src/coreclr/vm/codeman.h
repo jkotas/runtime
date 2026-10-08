@@ -450,7 +450,6 @@ class CodeHeapRequestInfo final
     bool         m_isDynamicDomain;
     bool         m_isCollectible;
     bool         m_isInterpreted;
-    bool         m_throwOnOutOfMemoryWithinRange;
     bool         m_isOptimizedCode;
 
 public:
@@ -465,6 +464,9 @@ public:
 
     const BYTE* GetLoAddr()                     { return m_loAddr;             }
     const BYTE* GetHiAddr()                     { return m_hiAddr;             }
+
+    // Requests for specific memory ranges return NULL instead of throwing OutOfMemoryException if the request cannot be satisfied.
+    bool   IsSpecificMemoryRangeRequested()     { return m_loAddr != NULL || m_hiAddr != NULL; }
 
     bool   IsCollectible()                      { return m_isCollectible;      }
 
@@ -482,9 +484,6 @@ public:
 
     size_t GetReserveForJumpStubs()             { return m_reserveForJumpStubs; }
     void   SetReserveForJumpStubs(size_t size)  { m_reserveForJumpStubs = size; }
-
-    bool   GetThrowOnOutOfMemoryWithinRange()   { return m_throwOnOutOfMemoryWithinRange; }
-    void   SetThrowOnOutOfMemoryWithinRange(bool value) { m_throwOnOutOfMemoryWithinRange = value; }
 };
 
 //-----------------------------------------------------------------------------
@@ -3352,8 +3351,6 @@ inline TADDR InterpreterJitManager::JitTokenToStartAddress(const METHODTOKEN& Me
 #endif // FEATURE_INTERPRETER
 
 #include "codeman.inl"
-
-void ThrowOutOfMemoryWithinRange();
 
 bool SafeToReportGenericParamContext(CrawlFrame* pCF);
 
