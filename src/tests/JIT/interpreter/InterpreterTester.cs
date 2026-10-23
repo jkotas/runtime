@@ -24,12 +24,9 @@ public class InterpreterTester
         var startInfo = new ProcessStartInfo(Path.Combine(coreRoot, "corerun"), interpreterApp);
         startInfo.EnvironmentVariables["DOTNET_Interpreter"] = "RunInterpreterTests";
 
-        using (Process p = Process.Start(startInfo))
-        {
-            p.WaitForExit();
-            Console.WriteLine ("Interpreted App returned {0}", p.ExitCode);
-            if (p.ExitCode != 100)
-                throw new Exception("Interpreted App failed execution");
-        }
+        ProcessExitStatus status = Process.Run(startInfo);
+        Console.WriteLine ("Interpreted App returned {0}", status.ExitCode);
+        if (status.ExitCode != 100)
+            throw new Exception("Interpreted App failed execution");
     }
 }

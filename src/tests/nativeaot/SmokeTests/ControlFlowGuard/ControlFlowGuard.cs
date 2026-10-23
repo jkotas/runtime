@@ -48,11 +48,10 @@ unsafe class ControlFlowGuardTests
             for (int i = 0; i < s_scenarios.Length; i++)
             {
                 Console.WriteLine($"*** Scenario {i} ***");
-                Process p = Process.Start(new ProcessStartInfo(Environment.ProcessPath, i.ToString()));
-                p.WaitForExit();
-                if ((p.ExitCode != -1073740791) && (p.ExitCode != 57005))
+                int exitCode = Process.Run(new ProcessStartInfo(Environment.ProcessPath, i.ToString())).ExitCode;
+                if ((exitCode != -1073740791) && (exitCode != 57005))
                 {
-                    Console.WriteLine($"FAIL: Scenario exited with exit code {p.ExitCode}");
+                    Console.WriteLine($"FAIL: Scenario exited with exit code {exitCode}");
                     return 1;
                 }
                 else

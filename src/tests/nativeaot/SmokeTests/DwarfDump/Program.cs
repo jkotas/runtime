@@ -26,16 +26,7 @@ public class Program
         }
 
         Console.WriteLine("Running llvm-dwarfdump");
-        var proc = Process.Start(llvmDwarfDumpPath, "--version");
-
-        if (proc is null)
-        {
-            Console.WriteLine("llvm-dwarfdump could not run");
-            return 2;
-        }
-
-        proc.WaitForExit();
-        if (proc.ExitCode != 0)
+        if (Process.Run(llvmDwarfDumpPath, ["--version"]).ExitCode != 0)
         {
             return 3;
         }

@@ -63,9 +63,7 @@ namespace R2RDumpTests
                 Arguments = string.Join(" ", new string[]{"exec", R2RDumpAbsolutePath, "--in", CoreLibAbsolutePath, "--out", OutputFile, "--val"})
             };
 
-            Process process = Process.Start(processStartInfo);
-            process.WaitForExit();
-            int exitCode = process.ExitCode;
+            int exitCode = Process.Run(processStartInfo).ExitCode;
             string outputContent = File.ReadAllText(OutputFile);
             File.Delete(OutputFile);
             // TODO, here is a point where we can add more validation to outputs

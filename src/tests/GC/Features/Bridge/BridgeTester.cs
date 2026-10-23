@@ -24,13 +24,10 @@ public class BridgeTester
         startInfo.EnvironmentVariables["MONO_GC_DEBUG"] = monoGCDebug;
         startInfo.EnvironmentVariables["MONO_GC_PARAMS"] = monoGCParams;
 
-        using (Process p = Process.Start(startInfo))
-        {
-            p.WaitForExit();
-            Console.WriteLine ("Bridge Test App returned {0}", p.ExitCode);
-            if (p.ExitCode != 100)
-                throw new Exception("Bridge Test App failed execution");
-        }
+        ProcessExitStatus status = Process.Run(startInfo);
+        Console.WriteLine ("Bridge Test App returned {0}", status.ExitCode);
+        if (status.ExitCode != 100)
+            throw new Exception("Bridge Test App failed execution");
     }
 
     [Fact]

@@ -69,13 +69,8 @@ public class MethodImplOptionsTests : IDisposable
         ProcessStartInfo ilasmPsi, ildasmPsi;
         GetIlasmProcessStartInfos(_ilasmFile, _ildasmFile, ilFileName, out disasmIlFileName, out ilasmPsi, out ildasmPsi);
 
-        Process ilasmProcess = Process.Start(ilasmPsi);
-        ilasmProcess.WaitForExit();
-        Assert.Equal(0, ilasmProcess.ExitCode);
-
-        Process ildasmProcess = Process.Start(ildasmPsi);
-        ildasmProcess.WaitForExit();
-        Assert.Equal(0, ildasmProcess.ExitCode);
+        Assert.Equal(0, Process.Run(ilasmPsi).ExitCode);
+        Assert.Equal(0, Process.Run(ildasmPsi).ExitCode);
 
         string disasmIl = File.ReadAllText(disasmIlFileName);
         var findMainAttributeRegex =
